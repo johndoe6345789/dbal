@@ -18,11 +18,25 @@ permissions:
 
 jobs:
   daemon:
-    name: DBAL daemon (C++)
-    runs-on: ubuntu-latest
+    name: DBAL daemon (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     # Conan builds drogon, boost, mongo-cxx-driver and xmlsec from source on a
     # cold cache, which is slow. Later runs restore from the cache below.
     timeout-minutes: 120
+
+    strategy:
+      # Report both architectures rather than stopping at the first failure -
+      # an arm64-only problem is exactly what this matrix exists to catch.
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            # Native arm64 hardware, free for public repositories. Emulating
+            # this under QEMU would multiply a source build of boost/drogon/
+            # mongo-cxx-driver by roughly 5-10x.
+            runner: ubuntu-24.04-arm
 
     defaults:
       run:
@@ -51,13 +65,15 @@ jobs:
       - name: Install Conan
         run: pip install --upgrade 'conan>=2.1'
 
+      # Keyed on arch: the cache holds compiled binaries, so sharing one key
+      # between x64 and arm64 would serve the wrong architecture's packages.
       - name: Cache Conan packages
         uses: actions/cache@v6
         with:
           path: ~/.conan2
-          key: conan-dbal-${{ runner.os }}-${{ hashFiles('libraries/dbal/production/build-config/conanfile.py') }}
+          key: conan-dbal-${{ matrix.arch }}-${{ hashFiles('libraries/dbal/production/build-config/conanfile.py') }}
           restore-keys: |
-            conan-dbal-${{ runner.os }}-
+            conan-dbal-${{ matrix.arch }}-
 
       - name: Conan install
         run: |
@@ -93,16 +109,33 @@ jobs:
       - name: Build
         run: cmake --build _build/cmake --parallel "$(nproc)"
 
+      # Asserts the ELF machine type, so the arm64 leg proves it really produced
+      # an aarch64 binary rather than silently building x86 twice.
       - name: Confirm binary
+        env:
+          ARCH: ${{ matrix.arch }}
         run: |
           BIN=$(find _build/cmake -name dbal_daemon -type f -perm -u+x | head -1)
           test -n "$BIN" || { echo "dbal_daemon was not produced"; exit 1; }
           echo "built: $BIN"
           file "$BIN"
 
+          case "$ARCH" in
+            arm64) want="aarch64" ;;
+            x64)   want="x86-64" ;;
+            *)     echo "unknown arch: $ARCH"; exit 1 ;;
+          esac
+          if ! file "$BIN" | grep -q "$want"; then
+            echo "expected a $want binary for $ARCH, got:"
+            file "$BIN"
+            exit 1
+          fi
+          echo "confirmed $ARCH binary ($want)"
+
       - name: Upload daemon
         uses: actions/upload-artifact@v7
         with:
-          name: dbal_daemon
+          # Names must differ per matrix leg; a shared name fails on upload.
+          name: dbal_daemon-${{ matrix.arch }}
           path: libraries/dbal/_build/cmake/dbal_daemon
           if-no-files-found: error
