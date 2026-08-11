@@ -1,5 +1,6 @@
-# Generated for the reposplit micro-repo layout.
-# Steps are emitted only for tooling this repo actually contains.
+# Written by hand, not by the reposplit workflow generator: that generator only
+# scanned for CMakeLists.txt at shallow depth, so it built the Next.js frontend
+# and ignored the daemon entirely. The daemon is what this repo is for.
 name: ci
 
 on:
@@ -16,73 +17,86 @@ permissions:
   contents: read
 
 jobs:
-  npm:
-    name: npm (via Verdaccio)
+  daemon:
+    name: DBAL daemon (C++)
     runs-on: ubuntu-latest
+    # Conan builds drogon, boost, mongo-cxx-driver and xmlsec from source on a
+    # cold cache, which is slow. Later runs restore from the cache below.
+    timeout-minutes: 120
+
+    defaults:
+      run:
+        working-directory: libraries/dbal
+
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            libssl-dev perl
+
+      - uses: actions/setup-python@v7
         with:
-          node-version: '22'
+          python-version: '3.12'
 
-      # Verdaccio's default config already proxies npmjs and allows an
-      # authenticated user to publish scoped packages, so no custom config is
-      # needed - which also avoids escaping a YAML block scalar inside printf.
-      - name: Start Verdaccio
+      - name: Install Conan
+        run: pip install --upgrade 'conan>=2.1'
+
+      - name: Cache Conan packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.conan2
+          key: conan-dbal-${{ runner.os }}-${{ hashFiles('libraries/dbal/production/build-config/conanfile.py') }}
+          restore-keys: |
+            conan-dbal-${{ runner.os }}-
+
+      - name: Conan install
         run: |
-          npm install -g verdaccio@6 --silent
-          verdaccio > /tmp/verdaccio.log 2>&1 &
-          for i in $(seq 1 40); do
-            curl -sf http://localhost:4873/-/ping >/dev/null 2>&1 && break
-            sleep 2
-          done
-          curl -sf http://localhost:4873/-/ping >/dev/null || { echo "Verdaccio did not come up"; tail -20 /tmp/verdaccio.log; exit 1; }
+          conan profile detect --force
+          conan install production/build-config \
+            --output-folder="$PWD/_build" \
+            --build=missing \
+            -s build_type=Release \
+            -s compiler.cppstd=20
 
-      - name: Publish @metabuilder packages
+      # conanfile.py uses cmake_layout, so the toolchain lands under a
+      # build-type subdirectory whose exact path varies by Conan version. The
+      # project's own Dockerfile locates it the same way.
+      - name: Locate Conan toolchain
+        id: toolchain
         run: |
-          TOKEN=$(curl -s -XPUT http://localhost:4873/-/user/org.couchdb.user:ci             -H "Content-Type: application/json"             -d '{"name":"ci","password":"ci-password","email":"ci@localhost","type":"user"}'             | python3 -c "import json,sys; print(json.load(sys.stdin).get('token',''))")
-          test -n "$TOKEN" || { echo "could not obtain a Verdaccio token"; exit 1; }
-          echo "registry=http://localhost:4873/" > /tmp/npmrc
-          echo "//localhost:4873/:_authToken=$TOKEN" >> /tmp/npmrc
+          TC=$(find "$PWD/_build" -name conan_toolchain.cmake -print -quit)
+          test -n "$TC" || { echo "conan_toolchain.cmake not found under _build"; exit 1; }
+          echo "path=$TC" >> "$GITHUB_OUTPUT"
+          echo "toolchain: $TC"
 
-          mkdir -p /tmp/src
-            git clone --depth 1 -q https://github.com/johndoe6345789/components.git /tmp/src/components
-            git clone --depth 1 -q https://github.com/johndoe6345789/hooks.git /tmp/src/hooks
-            git clone --depth 1 -q https://github.com/johndoe6345789/redux.git /tmp/src/redux
-            git clone --depth 1 -q https://github.com/johndoe6345789/types.git /tmp/src/types
-            git clone --depth 1 -q https://github.com/johndoe6345789/interfaces.git /tmp/src/interfaces
-            git clone --depth 1 -q https://github.com/johndoe6345789/translations.git /tmp/src/translations
-            git clone --depth 1 -q https://github.com/johndoe6345789/icons.git /tmp/src/icons
+      # CMakeLists resolves DBAL_REPO_ROOT as production/.., i.e. libraries/dbal,
+      # so shared/ and templates/ are found in place. It also runs
+      # shared/tools/codegen/gen_types.py to emit types.generated.hpp when absent.
+      - name: Configure
+        env:
+          TOOLCHAIN: ${{ steps.toolchain.outputs.path }}
+        run: |
+          cmake -S production -B _build/cmake -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN"
 
-          published=0
-          while IFS= read -r f; do
-            info=$(node -p "try{const p=require('$f');(p.name||'')+' '+(p.private?1:0)}catch(e){' '}")
-            name=${info% *}; priv=${info##* }
-            case "$name" in @metabuilder/*) ;; *) continue;; esac
-            # private:true packages are deliberately not publishable.
-            # Written as an if, not `[ ] && continue`: GitHub runs steps under
-            # `bash -e`, where a false test as the last command aborts the step.
-            if [ "$priv" = "1" ]; then
-              continue
-            fi
-            if (cd "$(dirname "$f")" && npm publish --userconfig /tmp/npmrc                   --registry http://localhost:4873 >/dev/null 2>&1); then
-              published=$((published + 1))
-            else
-              echo "could not publish $name"
-            fi
-          done < <(find /tmp/src -name package.json -not -path '*/node_modules/*')
-          echo "published $published package(s) to Verdaccio"
-          test "$published" -gt 0
+      - name: Build
+        run: cmake --build _build/cmake --parallel "$(nproc)"
 
-      - name: Install (frontends/dbal)
-        working-directory: frontends/dbal
-        run: npm install --registry http://localhost:4873
-      - name: lint (frontends/dbal)
-        working-directory: frontends/dbal
-        run: npm run lint
-      - name: typecheck (frontends/dbal)
-        working-directory: frontends/dbal
-        run: npm run typecheck
-      - name: build (frontends/dbal)
-        working-directory: frontends/dbal
-        run: npm run build
+      - name: Confirm binary
+        run: |
+          BIN=$(find _build/cmake -name dbal_daemon -type f -perm -u+x | head -1)
+          test -n "$BIN" || { echo "dbal_daemon was not produced"; exit 1; }
+          echo "built: $BIN"
+          file "$BIN"
+
+      - name: Upload daemon
+        uses: actions/upload-artifact@v7
+        with:
+          name: dbal_daemon
+          path: libraries/dbal/_build/cmake/dbal_daemon
+          if-no-files-found: error
