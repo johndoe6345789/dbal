@@ -74,7 +74,8 @@ jobs:
           echo "published $published package(s) to Verdaccio"
           test "$published" -gt 0
 
-      - name: Install dependencies
+      - name: Install (frontends/dbal)
+        working-directory: frontends/dbal
         run: npm install --registry http://localhost:4873
       - name: lint (frontends/dbal)
         working-directory: frontends/dbal
