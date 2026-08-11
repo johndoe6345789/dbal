@@ -40,7 +40,7 @@ jobs:
       # indented terminator, which never closes.
       - name: Generate workspace root
         run: |
-          echo '{"name": "ci-workspace", "private": true, "workspaces": ["dbal/frontends/dbal", "dbal/packages/database_manager", "dbal/packages/dbal_core", "dbal/packages/dbal_demo", "components", "components/m3", "hooks", "interfaces", "redux/*", "scss", "translations", "types"], "overrides": {"react": "^19.2.4", "react-dom": "^19.2.4", "react-redux": "^9.2.0", "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3"}}' > ws/package.json
+          echo '{"name": "ci-workspace", "private": true, "workspaces": ["dbal/frontends/dbal", "components", "components/m3", "hooks", "interfaces", "redux/*", "scss", "translations", "types"], "overrides": {"react": "^19.2.4", "react-dom": "^19.2.4", "react-redux": "^9.2.0", "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3"}}' > ws/package.json
       - name: Install dependencies
         working-directory: ws
         run: npm install
