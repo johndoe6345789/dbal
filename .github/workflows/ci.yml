@@ -33,7 +33,6 @@ jobs:
           git clone --depth 1 https://github.com/johndoe6345789/icons.git ws/icons
           git clone --depth 1 https://github.com/johndoe6345789/interfaces.git ws/interfaces
           git clone --depth 1 https://github.com/johndoe6345789/redux.git ws/redux
-          git clone --depth 1 https://github.com/johndoe6345789/schemas.git ws/schemas
           git clone --depth 1 https://github.com/johndoe6345789/scss.git ws/scss
           git clone --depth 1 https://github.com/johndoe6345789/translations.git ws/translations
           git clone --depth 1 https://github.com/johndoe6345789/types.git ws/types
