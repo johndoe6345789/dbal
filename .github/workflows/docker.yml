@@ -1,0 +1,157 @@
+# Builds the DBAL daemon image for both architectures and publishes a single
+# multi-arch manifest to GHCR.
+#
+# Each architecture is built on its own native runner rather than cross-built
+# under QEMU: the image compiles the daemon from source (boost, drogon,
+# mongo-cxx-driver, xmlsec all built by Conan), which emulation would slow by
+# roughly 5-10x. Each leg pushes an arch-tagged image; the merge job then joins
+# them into one manifest so `docker pull` resolves the right architecture.
+name: docker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'libraries/dbal/**'
+      - '.github/workflows/docker.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/johndoe6345789/dbal
+
+jobs:
+  build:
+    name: image (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # The builder stage is FROM metabuilder/base-apt, which lives in the
+      # metabuilder repo and is not published to any registry, so it is built
+      # here first. Its Dockerfile has no COPY, so the context can be tiny.
+      - name: Checkout metabuilder (for the base image)
+        uses: actions/checkout@v7
+        with:
+          repository: johndoe6345789/metabuilder
+          path: _metabuilder
+
+      - name: Build base-apt
+        run: |
+          docker build \
+            -f _metabuilder/deployment/base-images/Dockerfile.apt \
+            -t metabuilder/base-apt:latest \
+            _metabuilder/deployment/base-images
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Context is libraries/dbal: the Dockerfile reaches for both production/
+      # and shared/, so it needs the directory that contains both.
+      - name: Build image
+        env:
+          ARCH: ${{ matrix.arch }}
+          SHA: ${{ github.sha }}
+        run: |
+          docker build \
+            -f libraries/dbal/production/build-config/Dockerfile \
+            --build-arg BUILD_TYPE=Release \
+            -t "$IMAGE:${SHA}-${ARCH}" \
+            libraries/dbal
+
+      # Verifies the runtime stage actually contains what its ENV points at.
+      # Both entities/ and templates/ were missing before and would have failed
+      # only at daemon startup, after publication.
+      - name: Smoke test image contents
+        env:
+          ARCH: ${{ matrix.arch }}
+          SHA: ${{ github.sha }}
+        run: |
+          docker run --rm --entrypoint sh "$IMAGE:${SHA}-${ARCH}" -c '
+            set -e
+            test -x /app/dbal_daemon        || { echo "daemon missing"; exit 1; }
+            test -d /app/schemas/entities   || { echo "DBAL_SCHEMA_DIR target missing"; exit 1; }
+            test -d /app/templates/sql      || { echo "DBAL_TEMPLATE_DIR target missing"; exit 1; }
+            test -d /app/schemas/auth       || { echo "auth config missing"; exit 1; }
+            test -d /app/seeds/database     || { echo "seed data missing"; exit 1; }
+            echo "entities:  $(ls /app/schemas/entities | wc -l)"
+            echo "templates: $(ls /app/templates/sql | wc -l)"
+          '
+
+      - name: Report image size
+        env:
+          ARCH: ${{ matrix.arch }}
+          SHA: ${{ github.sha }}
+        run: |
+          SIZE=$(docker image inspect "$IMAGE:${SHA}-${ARCH}" --format '{{.Size}}')
+          {
+            echo "### Image (${ARCH})"
+            echo
+            echo "size: $((SIZE / 1024 / 1024)) MB"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Push
+        env:
+          ARCH: ${{ matrix.arch }}
+          SHA: ${{ github.sha }}
+        run: docker push "$IMAGE:${SHA}-${ARCH}"
+
+  manifest:
+    name: multi-arch manifest
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Joins the two arch-tagged images into one manifest list, so a plain
+      # `docker pull ghcr.io/johndoe6345789/dbal` resolves per-platform.
+      - name: Create and push manifest
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          docker buildx imagetools create \
+            --tag "$IMAGE:latest" \
+            --tag "$IMAGE:${SHA}" \
+            "$IMAGE:${SHA}-amd64" \
+            "$IMAGE:${SHA}-arm64"
+
+      - name: Verify manifest platforms
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          docker buildx imagetools inspect "$IMAGE:${SHA}"
+          RAW=$(docker buildx imagetools inspect "$IMAGE:${SHA}" --raw)
+          for want in amd64 arm64; do
+            echo "$RAW" | grep -q "\"$want\"" \
+              || { echo "manifest is missing linux/$want"; exit 1; }
+          done
+          echo "manifest covers linux/amd64 and linux/arm64"

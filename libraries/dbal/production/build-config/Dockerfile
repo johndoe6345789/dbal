@@ -60,8 +60,26 @@ RUN cd /dbal/build \
     && strip dbal_daemon
 
 # ── Runtime stage ────────────────────────────────────────────────────────────
-ARG BASE_REGISTRY=metabuilder
-FROM ${BASE_REGISTRY}/base-apt:latest
+# Deliberately NOT base-apt: that image carries the whole build toolchain
+# (clang, gdb, valgrind, a JDK, ffmpeg, the Qt/X11 dev stack) and would ship
+# ~3GB to run one daemon. Only the shared libraries the binary actually links
+# are installed here; everything else Conan static-links (see the *_STATIC
+# defines on the compile line).
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive TZ=UTC
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libpq5 \
+      libmysqlclient21 \
+      libuuid1 \
+      libxml2 \
+      libssl3 \
+      zlib1g \
+      libcurl4 \
+      ca-certificates \
+      curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -71,6 +89,13 @@ RUN useradd -r -u 1001 -m -s /bin/bash dbal || \
 
 # Copy binary from builder
 COPY --from=builder /dbal/build/dbal_daemon /app/dbal_daemon
+
+# Entity schemas — the source of truth the daemon loads at startup via
+# DBAL_SCHEMA_DIR. Without this the image builds fine and then fails to start.
+COPY --from=builder /dbal/shared/api/schema/entities /app/schemas/entities
+
+# Jinja2 SQL templates, read via DBAL_TEMPLATE_DIR by the SQL/SQLite adapters.
+COPY --from=builder /dbal/templates/ /app/templates/
 
 # Embed auth config — can be overridden via DBAL_AUTH_CONFIG
 COPY --from=builder /dbal/shared/api/schema/auth /app/schemas/auth
