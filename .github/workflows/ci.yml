@@ -17,39 +17,71 @@ permissions:
 
 jobs:
   npm:
-    name: npm (with sibling repos)
+    name: npm (via Verdaccio)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          path: ws/dbal
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - name: Clone sibling repos
+
+      # Verdaccio's default config already proxies npmjs and allows an
+      # authenticated user to publish scoped packages, so no custom config is
+      # needed - which also avoids escaping a YAML block scalar inside printf.
+      - name: Start Verdaccio
         run: |
-          git clone --depth 1 https://github.com/johndoe6345789/components.git ws/components
-          git clone --depth 1 https://github.com/johndoe6345789/hooks.git ws/hooks
-          git clone --depth 1 https://github.com/johndoe6345789/icons.git ws/icons
-          git clone --depth 1 https://github.com/johndoe6345789/interfaces.git ws/interfaces
-          git clone --depth 1 https://github.com/johndoe6345789/redux.git ws/redux
-          git clone --depth 1 https://github.com/johndoe6345789/scss.git ws/scss
-          git clone --depth 1 https://github.com/johndoe6345789/translations.git ws/translations
-          git clone --depth 1 https://github.com/johndoe6345789/types.git ws/types
-      # Single-line write: a heredoc inside a YAML block scalar ends up with an
-      # indented terminator, which never closes.
-      - name: Generate workspace root
+          npm install -g verdaccio@6 --silent
+          verdaccio > /tmp/verdaccio.log 2>&1 &
+          for i in $(seq 1 40); do
+            curl -sf http://localhost:4873/-/ping >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -sf http://localhost:4873/-/ping >/dev/null || { echo "Verdaccio did not come up"; tail -20 /tmp/verdaccio.log; exit 1; }
+
+      - name: Publish @metabuilder packages
         run: |
-          echo '{"name": "ci-workspace", "private": true, "workspaces": ["dbal/frontends/dbal", "components", "components/m3", "hooks", "interfaces", "redux/*", "scss", "translations", "types"], "overrides": {"react": "^19.2.4", "react-dom": "^19.2.4", "react-redux": "^9.2.0", "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3"}}' > ws/package.json
+          TOKEN=$(curl -s -XPUT http://localhost:4873/-/user/org.couchdb.user:ci             -H "Content-Type: application/json"             -d '{"name":"ci","password":"ci-password","email":"ci@localhost","type":"user"}'             | python3 -c "import json,sys; print(json.load(sys.stdin).get('token',''))")
+          test -n "$TOKEN" || { echo "could not obtain a Verdaccio token"; exit 1; }
+          echo "registry=http://localhost:4873/" > /tmp/npmrc
+          echo "//localhost:4873/:_authToken=$TOKEN" >> /tmp/npmrc
+
+          mkdir -p /tmp/src
+            git clone --depth 1 -q https://github.com/johndoe6345789/components.git /tmp/src/components
+            git clone --depth 1 -q https://github.com/johndoe6345789/hooks.git /tmp/src/hooks
+            git clone --depth 1 -q https://github.com/johndoe6345789/redux.git /tmp/src/redux
+            git clone --depth 1 -q https://github.com/johndoe6345789/types.git /tmp/src/types
+            git clone --depth 1 -q https://github.com/johndoe6345789/interfaces.git /tmp/src/interfaces
+            git clone --depth 1 -q https://github.com/johndoe6345789/translations.git /tmp/src/translations
+            git clone --depth 1 -q https://github.com/johndoe6345789/icons.git /tmp/src/icons
+
+          published=0
+          while IFS= read -r f; do
+            info=$(node -p "try{const p=require('$f');(p.name||'')+' '+(p.private?1:0)}catch(e){' '}")
+            name=${info% *}; priv=${info##* }
+            case "$name" in @metabuilder/*) ;; *) continue;; esac
+            # private:true packages are deliberately not publishable.
+            # Written as an if, not `[ ] && continue`: GitHub runs steps under
+            # `bash -e`, where a false test as the last command aborts the step.
+            if [ "$priv" = "1" ]; then
+              continue
+            fi
+            if (cd "$(dirname "$f")" && npm publish --userconfig /tmp/npmrc                   --registry http://localhost:4873 >/dev/null 2>&1); then
+              published=$((published + 1))
+            else
+              echo "could not publish $name"
+            fi
+          done < <(find /tmp/src -name package.json -not -path '*/node_modules/*')
+          echo "published $published package(s) to Verdaccio"
+          test "$published" -gt 0
+
       - name: Install dependencies
-        working-directory: ws
-        run: npm install
-      - name: lint (dbal/frontends/dbal)
-        working-directory: ws/dbal/frontends/dbal
+        run: npm install --registry http://localhost:4873
+      - name: lint (frontends/dbal)
+        working-directory: frontends/dbal
         run: npm run lint
-      - name: typecheck (dbal/frontends/dbal)
-        working-directory: ws/dbal/frontends/dbal
+      - name: typecheck (frontends/dbal)
+        working-directory: frontends/dbal
         run: npm run typecheck
-      - name: build (dbal/frontends/dbal)
-        working-directory: ws/dbal/frontends/dbal
+      - name: build (frontends/dbal)
+        working-directory: frontends/dbal
         run: npm run build
