@@ -1,0 +1,56 @@
+# Generated for the reposplit micro-repo layout.
+# Steps are emitted only for tooling this repo actually contains.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  npm:
+    name: npm (with sibling repos)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: ws/dbal
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Clone sibling repos
+        run: |
+          git clone --depth 1 https://github.com/johndoe6345789/components.git ws/components
+          git clone --depth 1 https://github.com/johndoe6345789/hooks.git ws/hooks
+          git clone --depth 1 https://github.com/johndoe6345789/icons.git ws/icons
+          git clone --depth 1 https://github.com/johndoe6345789/interfaces.git ws/interfaces
+          git clone --depth 1 https://github.com/johndoe6345789/redux.git ws/redux
+          git clone --depth 1 https://github.com/johndoe6345789/schemas.git ws/schemas
+          git clone --depth 1 https://github.com/johndoe6345789/scss.git ws/scss
+          git clone --depth 1 https://github.com/johndoe6345789/translations.git ws/translations
+          git clone --depth 1 https://github.com/johndoe6345789/types.git ws/types
+      # Single-line write: a heredoc inside a YAML block scalar ends up with an
+      # indented terminator, which never closes.
+      - name: Generate workspace root
+        run: |
+          echo '{"name": "ci-workspace", "private": true, "workspaces": ["dbal/frontends/dbal", "dbal/packages/database_manager", "dbal/packages/dbal_core", "dbal/packages/dbal_demo", "components", "components/m3", "hooks", "interfaces", "redux/*", "scss", "translations", "types"], "overrides": {"react": "^19.2.4", "react-dom": "^19.2.4", "react-redux": "^9.2.0", "@types/react": "^19.2.14", "@types/react-dom": "^19.2.3"}}' > ws/package.json
+      - name: Install dependencies
+        working-directory: ws
+        run: npm install
+      - name: lint (dbal/frontends/dbal)
+        working-directory: ws/dbal/frontends/dbal
+        run: npm run lint
+      - name: typecheck (dbal/frontends/dbal)
+        working-directory: ws/dbal/frontends/dbal
+        run: npm run typecheck
+      - name: build (dbal/frontends/dbal)
+        working-directory: ws/dbal/frontends/dbal
+        run: npm run build
