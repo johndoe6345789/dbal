@@ -31,12 +31,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # uuid-dev is required by src/adapters/elasticsearch, which includes
+      # <uuid/uuid.h> directly with no find_package, so CMake configures
+      # happily and only fails at compile time. The postgres/mysql/zlib dev
+      # packages are declared explicitly rather than relied on from the runner
+      # image, since CMakeLists marks all three REQUIRED.
       - name: Install build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build pkg-config \
-            libssl-dev perl
+            libssl-dev perl \
+            uuid-dev libpq-dev default-libmysqlclient-dev zlib1g-dev
 
       - uses: actions/setup-python@v7
         with:
