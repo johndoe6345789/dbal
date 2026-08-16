@@ -1,20 +1,29 @@
 # Multi-stage build for DBAL C++ daemon
 # Context: dbal/ (set by docker-compose — wider context for codegen access to shared/)
-# Requires: metabuilder/base-apt:latest (Ubuntu 24.04 + build tools)
+# Requires: metabuilder/base-conan-dbal:latest
+#
+# That image is base-apt plus Conan 2 and a warm package cache built from the
+# very conanfile.py copied below (deployment/base-images/Dockerfile.conan-dbal).
+# It previously started FROM base-apt and installed everything itself, which
+# meant compiling drogon, boost, mongo-c-driver, ICU and LibXml2 from source on
+# every build of the daemon -- around twenty minutes before a line of DBAL was
+# touched. The conan install below is unchanged and still authoritative; with
+# this base it resolves from the cache instead of building.
+#
+# If a dependency is added to conanfile.py before the base image is rebuilt,
+# --build=missing quietly compiles just that one. Correct, only slower.
 
 ARG BUILD_TYPE=Release
 
 # ── Build stage ──────────────────────────────────────────────────────────────
 ARG BASE_REGISTRY=metabuilder
-FROM ${BASE_REGISTRY}/base-apt:latest AS builder
+FROM ${BASE_REGISTRY}/base-conan-dbal:latest AS builder
 
 ARG BUILD_TYPE
 
 WORKDIR /dbal
 
-# Install Conan (codegen dependency), detect Conan profile
-RUN pip3 install --break-system-packages conan \
-    && conan profile detect --force
+# Conan and its detected profile are already baked into base-conan-dbal.
 
 # Copy dependency manifest first (layer caching)
 COPY production/build-config/conanfile.py ./build-config/conanfile.py
