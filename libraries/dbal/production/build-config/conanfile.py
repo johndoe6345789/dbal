@@ -18,6 +18,11 @@ class DBALDaemonConan(ConanFile):
         self.requires("gtest/1.14.0")
         self.requires("jwt-cpp/0.7.2")
         self.requires("argon2/20190702")
+        # Required by src/cache/caching_adapter.cpp (the read-through cache).
+        # Note src/adapters/redis/ -- the Redis *primary* adapter -- is excluded
+        # from the build in CMakeLists, which is why this was not needed before
+        # and why nothing noticed it was missing.
+        self.requires("redis-plus-plus/1.3.15")
         # 1.2.x is no longer installable: ConanCenter has dropped every 1.2
         # recipe, and 1.2.31's source URL now returns 403. 1.3.12 is the only
         # maintained version. Note the 1.2 -> 1.3 API change affects

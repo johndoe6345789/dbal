@@ -67,6 +67,7 @@ find_package(GTest REQUIRED)
 find_package(jwt-cpp REQUIRED)
 find_package(OpenSSL REQUIRED) # RSA/EVP for oidc/crypto — dbal_daemon already got this
 find_package(argon2 REQUIRED) # Argon2id password hashing for Credential
+find_package(redis++ REQUIRED) # read-through cache (src/cache/)
 find_package(xmlsec REQUIRED) # XML-DSig sign/verify for SAML
 find_package(LibXml2 REQUIRED) # SAML AuthnRequest/Response DOM construction
 find_package(ZLIB REQUIRED) # SAML HTTP-Redirect binding raw-DEFLATE decode
@@ -148,6 +149,7 @@ if(BUILD_DAEMON)
         jwt-cpp::jwt-cpp
         OpenSSL::Crypto
         argon2::argon2
+        redis++::redis++_static
         xmlsec::xmlsec
         LibXml2::LibXml2
         ZLIB::ZLIB
