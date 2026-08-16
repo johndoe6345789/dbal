@@ -261,9 +261,24 @@ void Server::registerRoutes() {
         const char* seed_on_startup = std::getenv("DBAL_SEED_ON_STARTUP");
         if (seed_on_startup && std::string(seed_on_startup) == "true") {
             if (ensureClient()) {
+                // DBAL_SEED_FORCE=true re-applies every seed record on this
+                // start, the same thing POST /admin/seed {"force": true} does
+                // at runtime. Normal starts do not need it: bootstrap records
+                // reconcile by themselves when the seed file's content
+                // changes, and non-bootstrap seeds are skipIfExists. It is for
+                // the case neither covers -- putting a database edited through
+                // real write paths back to what the seed files say -- and for
+                // environments where reaching the admin endpoint is awkward.
+                //
+                // It overwrites live rows with seed content, so it is off by
+                // default and should stay off outside development.
+                const char* seed_force = std::getenv("DBAL_SEED_FORCE");
+                bool force = seed_force && std::string(seed_force) == "true";
+
                 std::string seed_dir = actions::SeedLoaderAction::getDefaultSeedDir();
-                spdlog::info("[seed] auto-seeding from {}", seed_dir);
-                auto summary = actions::SeedLoaderAction::loadSeeds(*dbal_client_, seed_dir);
+                spdlog::info("[seed] auto-seeding from {}{}", seed_dir,
+                             force ? " (DBAL_SEED_FORCE=true — re-applying all records)" : "");
+                auto summary = actions::SeedLoaderAction::loadSeeds(*dbal_client_, seed_dir, force);
                 spdlog::info("[seed] complete — inserted={}, skipped={}, failed={}",
                              summary.total_inserted, summary.total_skipped, summary.total_failed);
             } else {
