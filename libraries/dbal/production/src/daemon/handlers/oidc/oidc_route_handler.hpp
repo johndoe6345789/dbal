@@ -28,7 +28,7 @@ public:
      *        Empty string (default) for an unproxied deployment.
      */
     OidcRouteHandler(dbal::oidc::OidcService& service, PendingAuthorizeStore& pendingStore,
-                      std::string publicPathPrefix = "");
+                      PendingAuthorizeStore& restartStore, std::string publicPathPrefix = "");
 
     void handleDiscovery(const drogon::HttpRequestPtr& req,
                           std::function<void(const drogon::HttpResponsePtr&)>&& cb) const;
@@ -60,6 +60,7 @@ public:
 private:
     dbal::oidc::OidcService& service_;
     PendingAuthorizeStore& pending_store_;
+    PendingAuthorizeStore& restart_store_;
     std::string public_path_prefix_;
 };
 
