@@ -167,7 +167,7 @@
         "tenantId": "default",
         "threadId": "clx1thr001dbalmulti",
         "authorId": "user_admin_system",
-        "content": "Great question. The multi-adapter setup uses separate environment variables for each layer. Set DATABASE_URL for your primary PostgreSQL connection, DBAL_CACHE_URL=redis://localhost:6379/0?ttl=300&pattern=read-through for the Redis cache, and DBAL_SEARCH_URL=http://localhost:9200?index=dbal_search&refresh=true for Elasticsearch. The DBAL daemon handles the coordination between layers automatically based on the configured pattern.",
+        "content": "Great question. The multi-adapter setup uses separate environment variables for each layer. Set DATABASE_URL for your primary PostgreSQL connection, DBAL_CACHE_URL=redis://localhost:6379/0?ttl=300&pattern=read-through for the Redis cache, and DBAL_SEARCH_URL=http://localhost:9200?index=dbal_search&refresh=true for Elasticsearch. Worth knowing what each actually does: the cache is read-through on single-record reads and invalidates on write; the search layer mirrors writes into Elasticsearch and answers /{tenant}/{package}/{Entity}/_search. Both are best-effort -- the primary database stays authoritative, so if Redis or Elasticsearch is down you get slower reads and a stale index rather than failed writes. Bulk operations are not mirrored into the search index.",
         "likes": 12,
         "isEdited": false,
         "createdAt": 0,

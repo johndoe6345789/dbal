@@ -190,6 +190,11 @@ if(BUILD_TESTING)
         # in caching_adapter.cpp, which would drag redis++ into this target.
         tests/unit/cache_config_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/cache/cache_config.cpp
+        # Same shape: pure URL parsing, no Elasticsearch needed. searching_
+        # adapter.cpp is deliberately not linked here -- it would pull in the
+        # ES HTTP client and cpr for a test that needs neither.
+        tests/unit/search_config_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/search/search_config.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/security/crypto/reversible_crypto.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/oidc/crypto/rsa_keypair.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/oidc/tokens/token_issuer.cpp

@@ -23,6 +23,7 @@
 #include "handlers/batch_route_handler.hpp"
 #include "handlers/entity_route_handler_helpers.hpp"
 #include "bulk_handler.hpp"
+#include "search_handler.hpp"
 #include "rpc_restful_handler.hpp"
 #include "handlers/oidc/oidc_route_handler.hpp"
 #include "handlers/oidc/login_route_handler.hpp"
@@ -581,6 +582,66 @@ void Server::registerRoutes() {
 
     // ===== Bulk operations — transactional (single entity) =====
     // Registered BEFORE generic entity routes so /_bulk/* patterns match first
+
+    // GET /{tenant}/{package}/{entity}/_search?q=...&limit=...
+    //
+    // Answers from the Elasticsearch mirror when DBAL_SEARCH_URL is set. With
+    // it unset the adapter chain has no search layer and this returns the
+    // "search is not configured" error from Adapter's default, rather than 404
+    // -- the route existing but saying why is easier to diagnose than a path
+    // that appears not to exist.
+    drogon::app().registerHandler(
+        "/{tenant}/{package}/{entity}/_search",
+        [this](const drogon::HttpRequestPtr& req, DrogonCallback&& callback,
+               const std::string& tenant, const std::string& package, const std::string& entity) {
+            auto client_ip = req->getPeerAddr().toIp();
+            // A read, so the read limiter: searches are cheap to issue and the
+            // mirror absorbs them, unlike mutations.
+            if (!read_limiter.allow(client_ip)) {
+                auto resp = drogon::HttpResponse::newHttpResponse();
+                resp->setStatusCode(drogon::k429TooManyRequests);
+                callback(resp);
+                return;
+            }
+            if (!ensureClient()) {
+                ::Json::Value body;
+                body["success"] = false;
+                body["message"] = "DBAL client is unavailable";
+                auto response = drogon::HttpResponse::newHttpJsonResponse(body);
+                response->setStatusCode(drogon::HttpStatusCode::k503ServiceUnavailable);
+                callback(response);
+                return;
+            }
+
+            const std::string query = req->getParameter("q");
+            if (query.empty()) {
+                ::Json::Value body;
+                body["success"] = false;
+                body["message"] = "query parameter 'q' is required";
+                auto response = drogon::HttpResponse::newHttpJsonResponse(body);
+                response->setStatusCode(drogon::HttpStatusCode::k400BadRequest);
+                callback(response);
+                return;
+            }
+
+            int limit = 20;
+            const std::string limit_param = req->getParameter("limit");
+            if (!limit_param.empty()) {
+                try { limit = std::stoi(limit_param); }
+                catch (const std::exception&) { limit = 20; }  // bad limit is not worth a 400
+            }
+
+            std::string full_path = "/" + tenant + "/" + package + "/" + entity;
+            auto route = rpc::parseRoute(full_path);
+            auto callbacks = handlers::createResponseCallbacks(std::move(callback));
+
+            rpc::SearchHandler::handleSearch(
+                *dbal_client_, route, query, limit,
+                callbacks.send_success, callbacks.send_error
+            );
+        },
+        {drogon::HttpMethod::Get}
+    );
 
     // POST /{tenant}/{package}/{entity}/_bulk/create
     drogon::app().registerHandler(

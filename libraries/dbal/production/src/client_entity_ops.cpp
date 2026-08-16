@@ -30,6 +30,11 @@ Result<adapters::ListResult<nlohmann::json>> Client::listEntities(const std::str
     return adapter_->list(entityName, options);
 }
 
+Result<adapters::ListResult<nlohmann::json>> Client::searchEntities(
+    const std::string& entityName, const std::string& query, int limit) {
+    return adapter_->search(entityName, query, limit);
+}
+
 Result<bool> Client::beginTransaction() {
     return adapter_->beginTransaction();
 }

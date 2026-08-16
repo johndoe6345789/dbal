@@ -118,6 +118,13 @@ public:
     Result<bool> deleteEntity(const std::string& entityName, const std::string& id);
     Result<adapters::ListResult<nlohmann::json>> listEntities(const std::string& entityName, const ListOptions& options);
 
+    /// Full-text search, answered by the Elasticsearch mirror when
+    /// DBAL_SEARCH_URL is configured. Without it the adapter chain has no
+    /// search layer and this returns an error saying so, rather than an empty
+    /// result that would read as "nothing matched".
+    Result<adapters::ListResult<nlohmann::json>> searchEntities(
+        const std::string& entityName, const std::string& query, int limit);
+
     // ===== Transaction Operations =====
 
     Result<bool> beginTransaction();

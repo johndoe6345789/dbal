@@ -185,6 +185,13 @@ void CachingAdapter::invalidateEntity(const std::string& entityName) noexcept {
 // pass-through
 // ---------------------------------------------------------------------------
 
+Result<ListResult<Json>> CachingAdapter::search(const std::string& entityName,
+                                                 const std::string& query, int limit) {
+    // Not cached: results depend on the query text, and the search layer
+    // underneath already owns their freshness.
+    return inner_->search(entityName, query, limit);
+}
+
 Result<Json> CachingAdapter::readIncludingSensitive(const std::string& entityName, const std::string& id) {
     // Never cached: this path returns fields read() redacts.
     return inner_->readIncludingSensitive(entityName, id);

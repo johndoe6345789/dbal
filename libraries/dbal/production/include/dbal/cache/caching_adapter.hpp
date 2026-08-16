@@ -78,6 +78,11 @@ public:
     Result<int> deleteMany(const std::string& entityName, const Json& filter) override;
 
     // --- pass-through ------------------------------------------------------
+    /// Forwarded, not answered. The cache sits outside the search layer, so
+    /// without this override search() would reach Adapter's default and report
+    /// "search is not configured" on a daemon where it is.
+    Result<ListResult<Json>> search(const std::string& entityName,
+                                     const std::string& query, int limit) override;
     Result<Json> readIncludingSensitive(const std::string& entityName, const std::string& id) override;
     Result<ListResult<Json>> list(const std::string& entityName, const ListOptions& options) override;
     Result<Json> findFirst(const std::string& entityName, const Json& filter) override;

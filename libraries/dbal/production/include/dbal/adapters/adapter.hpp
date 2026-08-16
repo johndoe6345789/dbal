@@ -96,6 +96,25 @@ public:
     virtual Result<Json> readIncludingSensitive(const std::string& entityName, const std::string& id) {
         return read(entityName, id);
     }
+    /// Full-text search across an entity.
+    ///
+    /// Only meaningful when a search layer is configured (DBAL_SEARCH_URL);
+    /// SearchingAdapter overrides this and every other adapter inherits the
+    /// default below. Non-virtual-pure with an explicit "unavailable" default
+    /// so adding the search layer does not force fourteen adapters to grow a
+    /// method none of them can implement.
+    ///
+    /// @param entityName Entity to search within.
+    /// @param query      Free-text query string.
+    /// @param limit      Maximum hits to return.
+    virtual Result<ListResult<Json>> search(const std::string& entityName,
+                                             const std::string& query, int limit) {
+        (void)entityName; (void)query; (void)limit;
+        return Error::internal(
+            "Full-text search is not configured. Set DBAL_SEARCH_URL to an "
+            "Elasticsearch endpoint to enable it.");
+    }
+
     virtual Result<Json> update(const std::string& entityName, const std::string& id, const Json& data) = 0;
     virtual Result<bool> remove(const std::string& entityName, const std::string& id) = 0;
     virtual Result<ListResult<Json>> list(const std::string& entityName, const ListOptions& options) = 0;
