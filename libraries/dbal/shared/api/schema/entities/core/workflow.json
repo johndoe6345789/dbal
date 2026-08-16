@@ -7,6 +7,7 @@
   "fields": {
     "id": {
       "type": "string",
+      "primary": true,
       "description": "Unique workflow identifier",
       "required": true,
       "unique": true
@@ -66,7 +67,7 @@
     },
     "isArchived": {
       "type": "boolean",
-      "description": "Soft-delete marker — this is the field named by softDeleteField below, so it must exist for soft delete to work.",
+      "description": "Soft-delete marker named by softDeleteField below. NOTE: softDelete/softDeleteField are declarative only — nothing in libraries/dbal/production/src reads either, so this column is never written today and DELETE is still a hard delete. It therefore does not currently conflict with status: 'archived', which is what the UI reads. Whoever implements soft delete must pick which of the two is authoritative and keep them in sync, rather than letting a row be isArchived=true while status says 'active'.",
       "optional": true,
       "nullable": true,
       "default": false

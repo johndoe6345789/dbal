@@ -97,3 +97,72 @@ TEST(SchemaAclRegistry, UnknownEntityIsNotFlagged) {
     SchemaAclRegistry registry(dir.path());
     EXPECT_FALSE(registry.isSystemOnly("DoesNotExist", "read"));
 }
+
+// Regression: an entity whose ACL carries values that map<string,bool> cannot
+// represent must still load, and its "system": true must still be honoured.
+//
+// parseACLOperation used to call get<bool>() on every ACL value. Real schemas
+// carry role lists, single-role strings and ownership templates, so it threw
+// json type_error.302 -- and the catch is up in EntitySchemaLoader::loadSchemas,
+// so the whole file was discarded. Because isSystemOnly() fails open on
+// entities it never loaded, that silently UNPROTECTED every system-only entity
+// in the file: EmailAttachment.create, MediaJob.create/update and
+// Notification.create were all reachable through the generic CRUD routes.
+TEST(SchemaAclRegistry, NonBooleanAclValuesDoNotDropTheSchema) {
+    TempSchemaDir dir;
+    dir.writeSchema("MediaJob.json", R"({
+        "entity": "MediaJob",
+        "fields": { "id": { "type": "string" } },
+        "acl": {
+            "create": { "system": true },
+            "update": { "system": true, "role": ["admin", "god"] },
+            "read":   { "role": "user" },
+            "delete": { "ownerId": "{{ currentUserId }}" }
+        }
+    })");
+
+    SchemaAclRegistry registry(dir.path());
+    // The entity loaded at all -- previously the whole file was dropped.
+    EXPECT_TRUE(registry.isSystemOnly("MediaJob", "create"));
+    // "system": true survives alongside a sibling role list.
+    EXPECT_TRUE(registry.isSystemOnly("MediaJob", "update"));
+    // Unmodellable predicates are skipped, not promoted to system-only.
+    EXPECT_FALSE(registry.isSystemOnly("MediaJob", "read"));
+    EXPECT_FALSE(registry.isSystemOnly("MediaJob", "delete"));
+}
+
+// The array form: an operation may be a list of alternatives, any one of
+// which grants access (youtube_clone/video.json uses this shape).
+TEST(SchemaAclRegistry, ArrayFormAclOperationIsParsed) {
+    TempSchemaDir dir;
+    dir.writeSchema("Video.json", R"({
+        "entity": "Video",
+        "fields": { "id": { "type": "string" } },
+        "acl": {
+            "read":   [ { "authenticated": true, "published": true },
+                        { "uploaderId": "{{ currentUserId }}" } ],
+            "create": [ { "system": true } ]
+        }
+    })");
+
+    SchemaAclRegistry registry(dir.path());
+    EXPECT_TRUE(registry.isSystemOnly("Video", "create"));
+    EXPECT_FALSE(registry.isSystemOnly("Video", "read"));
+}
+
+// A schema that indexes tenantId without declaring it as a field relies on
+// the top-level "tenantId": true auto-add. Without it the index failed
+// validation, the entity was dropped, and its ACL went unenforced.
+TEST(SchemaAclRegistry, ImplicitTenantIdFieldDoesNotDropTheSchema) {
+    TempSchemaDir dir;
+    dir.writeSchema("Notification.json", R"({
+        "entity": "Notification",
+        "tenantId": true,
+        "fields": { "id": { "type": "string" } },
+        "indexes": [ { "fields": ["tenantId"] } ],
+        "acl": { "create": { "system": true } }
+    })");
+
+    SchemaAclRegistry registry(dir.path());
+    EXPECT_TRUE(registry.isSystemOnly("Notification", "create"));
+}

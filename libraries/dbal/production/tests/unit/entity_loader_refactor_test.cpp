@@ -4,6 +4,11 @@
  */
 
 #include <gtest/gtest.h>
+// std::ofstream, used by the temp-schema fixtures below. Previously arrived
+// only transitively, so this file would not compile on its own — invisible
+// because it is not in the dbal_unit_tests target in CMakeLists.txt.
+#include <fstream>
+#include <filesystem>
 #include "dbal/core/loaders/json_parser.hpp"
 #include "dbal/core/loaders/field_parser.hpp"
 #include "dbal/core/loaders/relation_parser.hpp"

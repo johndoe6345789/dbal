@@ -19,6 +19,11 @@ std::string SqlTypeMapper::yamlTypeToSqlType(const std::string& yaml_type, Diale
             return "BIGINT";
         }
         return "BIGINT";
+    } else if (yaml_type == "float") {
+        return "REAL";
+    } else if (yaml_type == "double") {
+        // SQLite accepts DOUBLE PRECISION and treats it as REAL affinity.
+        return "DOUBLE PRECISION";
     } else if (yaml_type == "decimal") {
         // DECIMAL is an alias for NUMERIC in Postgres and is accepted by
         // MySQL and SQLite too, so one branch covers every dialect.

@@ -5,6 +5,7 @@
   "fields": {
     "id": {
       "type": "string",
+      "primary": true,
       "description": "Unique schema identifier",
       "required": true,
       "unique": true
