@@ -45,28 +45,37 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # The builder stage is FROM metabuilder/base-apt, which lives in the
-      # metabuilder repo and is not published to any registry, so it is built
-      # here first. Its Dockerfile has no COPY, so the context can be tiny.
-      - name: Checkout metabuilder (for the base image)
-        uses: actions/checkout@v7
-        with:
-          repository: johndoe6345789/metabuilder
-          path: _metabuilder
-
-      - name: Build base-apt
-        run: |
-          docker build \
-            -f _metabuilder/deployment/base-images/Dockerfile.apt \
-            -t metabuilder/base-apt:latest \
-            _metabuilder/deployment/base-images
-
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The builder stage is FROM ${BASE_REGISTRY}/base-apt:latest, defaulting
+      # to metabuilder/base-apt. That image used to be built here from a
+      # checkout of metabuilder, but deployment/ moved out of metabuilder into
+      # its own repo, so the build context path vanished and every run failed
+      # with "unable to prepare context: path
+      # _metabuilder/deployment/base-images not found". Pull the published
+      # image and retag it to the local name the Dockerfile expects -- the same
+      # thing metabuilder's own docker.yml does, and what the deployment repo's
+      # base-images.yml header documents.
+      #
+      # A stale base is slower, never wrong: the Dockerfile re-runs its own
+      # dependency installation, so this never waits on the base pipeline.
+      - name: Pull base-apt
+        env:
+          REMOTE: ghcr.io/johndoe6345789/deployment/base-apt:latest
+        run: |
+          if ! docker pull "$REMOTE"; then
+            echo "::error::Could not pull $REMOTE"
+            echo "Base images come from github.com/johndoe6345789/deployment"
+            echo "  -> its 'base-images' workflow must have completed at least"
+            echo "     once, including the manifest job that creates :latest."
+            exit 1
+          fi
+          docker tag "$REMOTE" metabuilder/base-apt:latest
 
       # Context is libraries/dbal: the Dockerfile reaches for both production/
       # and shared/, so it needs the directory that contains both.
