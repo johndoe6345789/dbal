@@ -180,6 +180,29 @@ TEST(SqlTypeMapperTest, YamlToSqlType_UUID_Postgres_UUID) {
     EXPECT_EQ(SqlTypeMapper::yamlTypeToSqlType("uuid", Dialect::MySQL),    "VARCHAR(36)");
 }
 
+// Numeric types must not silently reach the VARCHAR(255) fallback. "decimal"
+// in particular is the money type in ecommerce/product.json (precision 10,
+// scale 2) -- storing that as text is a data-integrity bug that no test
+// would otherwise catch, because the fallback returns a valid-looking type.
+TEST(SqlTypeMapperTest, YamlToSqlType_Decimal_IsFixedPoint_NotVarchar) {
+    for (auto dialect : {Dialect::Postgres, Dialect::MySQL, Dialect::Prisma}) {
+        EXPECT_EQ(SqlTypeMapper::yamlTypeToSqlType("decimal", dialect), "DECIMAL(10,2)");
+    }
+}
+
+TEST(SqlTypeMapperTest, YamlToSqlType_FloatAndDouble_AreNumeric) {
+    EXPECT_EQ(SqlTypeMapper::yamlTypeToSqlType("float",  Dialect::Postgres), "REAL");
+    EXPECT_EQ(SqlTypeMapper::yamlTypeToSqlType("double", Dialect::Postgres), "DOUBLE PRECISION");
+    EXPECT_EQ(SqlTypeMapper::yamlTypeToSqlType("float",  Dialect::MySQL),    "REAL");
+    EXPECT_EQ(SqlTypeMapper::yamlTypeToSqlType("double", Dialect::MySQL),    "DOUBLE PRECISION");
+}
+
+// Guards the fallback itself: an unknown type still yields VARCHAR(255), so
+// the tests above are asserting real branches rather than a changed default.
+TEST(SqlTypeMapperTest, YamlToSqlType_UnknownType_FallsBackToVarchar) {
+    EXPECT_EQ(SqlTypeMapper::yamlTypeToSqlType("no_such_type", Dialect::Postgres), "VARCHAR(255)");
+}
+
 TEST(SqlTypeMapperTest, YamlToSqlType_DateTime_MySQL_DATETIME) {
     EXPECT_EQ(SqlTypeMapper::yamlTypeToSqlType("datetime", Dialect::MySQL),    "DATETIME");
     EXPECT_EQ(SqlTypeMapper::yamlTypeToSqlType("date",     Dialect::Postgres), "TIMESTAMP");

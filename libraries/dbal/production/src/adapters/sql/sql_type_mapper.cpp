@@ -19,6 +19,21 @@ std::string SqlTypeMapper::yamlTypeToSqlType(const std::string& yaml_type, Diale
             return "BIGINT";
         }
         return "BIGINT";
+    } else if (yaml_type == "float") {
+        return "REAL";
+    } else if (yaml_type == "double") {
+        // SQLite accepts DOUBLE PRECISION and treats it as REAL affinity.
+        return "DOUBLE PRECISION";
+    } else if (yaml_type == "decimal") {
+        // DECIMAL is an alias for NUMERIC in Postgres and is accepted by
+        // MySQL and SQLite too, so one branch covers every dialect.
+        //
+        // Precision/scale are NOT plumbed through: this mapper only receives
+        // the type string, while "precision" and "scale" live on the field
+        // node. 10,2 is what every decimal field in the schema set declares
+        // (ecommerce/product.json). Widen this into a real parameterised
+        // mapping before adding a decimal field that needs anything else.
+        return "DECIMAL(10,2)";
     } else if (yaml_type == "boolean") {
         if (dialect == Dialect::MySQL) {
             return "TINYINT(1)";

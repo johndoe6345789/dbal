@@ -1,5 +1,7 @@
 #include "dbal/core/loaders/field_parser.hpp"
 #include "dbal/core/entity_loader.hpp"
+#include <algorithm>
+#include <cctype>
 
 namespace dbal {
 namespace core {
@@ -19,13 +21,25 @@ EntityField FieldParser::parseField(const std::string& fieldName, const nlohmann
 }
 
 std::string FieldParser::parseType(const nlohmann::json& fieldNode) {
-    return fieldNode.value("type", std::string("string"));
+    std::string type = fieldNode.value("type", std::string("string"));
+    // Case-fold, as adapters/schema_loader.hpp already does. Prisma-style
+    // schemas spell types "String"/"DateTime"/"Number" (youtube_clone/video.json),
+    // and SchemaValidator matches its type list case-sensitively -- so without
+    // this the CRUD loader accepts a schema that the validator rejects
+    // field-by-field, and the entity vanishes from the ACL registry.
+    std::transform(type.begin(), type.end(), type.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    return type;
 }
 
 void FieldParser::parseFlags(const nlohmann::json& fieldNode, EntityField& field) {
     field.required  = fieldNode.value("required",  false);
     field.unique    = fieldNode.value("unique",     false);
-    field.primary   = fieldNode.value("primary",   false);
+    // "primaryKey" is the spelling in the ecommerce/gaming/spotify_clone
+    // schemas; adapters/schema_loader.hpp accepts either, this did not, so
+    // those entities loaded with no primary key at all.
+    field.primary   = fieldNode.value("primary",   false) ||
+                      fieldNode.value("primaryKey", false);
     field.generated = fieldNode.value("generated", false);
     field.nullable  = fieldNode.value("nullable",  false);
     field.index     = fieldNode.value("index",     false);

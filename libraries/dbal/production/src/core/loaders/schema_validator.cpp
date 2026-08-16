@@ -112,7 +112,13 @@ std::vector<std::string> SchemaValidator::getValidFieldTypes() {
     return {
         "string", "number", "boolean", "timestamp", "json",
         "uuid", "email", "text", "bigint", "enum", "cuid",
-        "integer", "float", "double", "date", "datetime"
+        // "int" is already an accepted spelling in SqlTypeMapper (it maps
+        // alongside number/integer to INTEGER); the email_* schemas use it.
+        "integer", "int", "float", "double", "date", "datetime",
+        // Fixed-point, for money. Kept distinct from float/double on purpose:
+        // ecommerce/product.json declares price/salePrice with precision 10,
+        // scale 2, and binary floating point is the wrong storage for that.
+        "decimal"
     };
 }
 
