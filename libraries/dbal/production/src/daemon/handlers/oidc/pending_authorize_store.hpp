@@ -46,6 +46,26 @@ public:
         return req;
     }
 
+    /// Reads an entry without consuming it.
+    ///
+    /// Only for the restart store, which answers "what was this login trying
+    /// to do?" after the single-use continuation has already been spent. The
+    /// continuation store must keep using take(): re-reading an authorize
+    /// request there would let one login form be submitted repeatedly.
+    ///
+    /// Expired entries are erased here rather than merely reported, so a
+    /// restart token cannot be probed indefinitely after it lapses.
+    std::optional<dbal::oidc::AuthorizeRequest> peek(const std::string& token) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto it = entries_.find(token);
+        if (it == entries_.end()) return std::nullopt;
+        if (std::chrono::steady_clock::now() > it->second.expiry) {
+            entries_.erase(it);
+            return std::nullopt;
+        }
+        return it->second.request;
+    }
+
 private:
     struct Entry {
         dbal::oidc::AuthorizeRequest request;

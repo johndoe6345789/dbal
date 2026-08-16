@@ -1228,9 +1228,10 @@ void Server::registerRoutes() {
     // ===== OIDC provider routes (no-op if oidc_service_ failed to initialize) =====
     if (oidc_service_) {
         auto oidc_handler = std::make_shared<handlers::oidc::OidcRouteHandler>(
-            *oidc_service_, oidc_pending_store_, public_path_prefix);
+            *oidc_service_, oidc_pending_store_, oidc_restart_store_, public_path_prefix);
         auto login_handler = std::make_shared<handlers::oidc::LoginRouteHandler>(
-            *dbal_client_, *oidc_service_, oidc_pending_store_, public_path_prefix);
+            *dbal_client_, *oidc_service_, oidc_pending_store_, oidc_restart_store_,
+            public_path_prefix);
 
         drogon::app().registerHandler(
             "/.well-known/openid-configuration",

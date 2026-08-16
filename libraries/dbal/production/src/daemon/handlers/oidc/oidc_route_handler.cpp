@@ -54,8 +54,9 @@ std::optional<dbal::security::JwtClaims> validateBearerToken(
 } // namespace
 
 OidcRouteHandler::OidcRouteHandler(dbal::oidc::OidcService& service, PendingAuthorizeStore& pendingStore,
-                                    std::string publicPathPrefix)
-    : service_(service), pending_store_(pendingStore), public_path_prefix_(std::move(publicPathPrefix)) {}
+                                    PendingAuthorizeStore& restartStore, std::string publicPathPrefix)
+    : service_(service), pending_store_(pendingStore), restart_store_(restartStore),
+      public_path_prefix_(std::move(publicPathPrefix)) {}
 
 void OidcRouteHandler::handleDiscovery(
     const drogon::HttpRequestPtr&, std::function<void(const drogon::HttpResponsePtr&)>&& cb) const {
@@ -123,9 +124,16 @@ void OidcRouteHandler::handleAuthorize(
     }
 
     std::string continuationToken = pending_store_.store(authReq);
+    // Same request, second copy, longer-lived: the continuation is single-use
+    // and short (5 min) because it authorises one form submission, but losing
+    // it should cost a fresh form, not the whole sign-in. The login handler
+    // reads this one to mint a replacement. Opaque token, server-side lookup,
+    // so the form still cannot tamper with client_id/redirect_uri/challenge.
+    std::string restartToken = restart_store_.store(authReq);
     auto resp = drogon::HttpResponse::newHttpResponse();
     resp->setStatusCode(drogon::k302Found);
-    resp->addHeader("Location", public_path_prefix_ + "/oidc/login?continuation=" + continuationToken);
+    resp->addHeader("Location", public_path_prefix_ + "/oidc/login?continuation=" +
+                                    continuationToken + "&restart=" + restartToken);
     cb(resp);
 }
 

@@ -83,6 +83,11 @@ private:
     // OIDC provider (set once in registerRoutes; requires dbal_client_ to exist first)
     std::optional<dbal::oidc::OidcService> oidc_service_;
     dbal::daemon::handlers::oidc::PendingAuthorizeStore oidc_pending_store_;
+    // Same authorize requests, kept longer so an expired continuation can be
+    // replaced rather than dead-ending the sign-in. 30 min: long enough to
+    // cover someone leaving the login form open over a break, short enough
+    // that an abandoned request does not linger for the process's lifetime.
+    dbal::daemon::handlers::oidc::PendingAuthorizeStore oidc_restart_store_{1800};
 
     // SAML 2.0 IdP (set once in registerRoutes; requires dbal_client_ to exist first)
     std::optional<dbal::saml::SamlService> saml_service_;

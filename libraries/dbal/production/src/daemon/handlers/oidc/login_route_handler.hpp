@@ -23,10 +23,16 @@ public:
     /// @param publicPathPrefix See OidcRouteHandler's constructor doc — same
     ///        reverse-proxy-prefix concern applies to this form's own
     ///        action="" URL.
+    /// @param restartStore Longer-lived store holding the same authorize
+    ///        request, so an expired single-use continuation can be
+    ///        replaced instead of dead-ending the sign-in.
     LoginRouteHandler(dbal::Client& client, dbal::oidc::OidcService& service,
-                       PendingAuthorizeStore& pendingStore, std::string publicPathPrefix = "");
+                       PendingAuthorizeStore& pendingStore, PendingAuthorizeStore& restartStore,
+                       std::string publicPathPrefix = "");
 
-    /// GET /oidc/login?continuation=... — renders the login form.
+    /// GET /oidc/login?continuation=...[&restart=...][&notice=...] —
+    /// renders the login form, minting a continuation from the restart
+    /// token if the one supplied is missing.
     void handleGet(const drogon::HttpRequestPtr& req,
                     std::function<void(const drogon::HttpResponsePtr&)>&& cb) const;
 
@@ -39,6 +45,7 @@ private:
     dbal::Client& client_;
     dbal::oidc::OidcService& service_;
     PendingAuthorizeStore& pending_store_;
+    PendingAuthorizeStore& restart_store_;
     std::string public_path_prefix_;
 };
 

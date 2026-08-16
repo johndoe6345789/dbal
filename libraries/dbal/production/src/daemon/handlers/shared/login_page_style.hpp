@@ -26,6 +26,8 @@ inline const std::string& loginPageStyle() {
     --accent-hover: #4338ca;
     --error-bg: #fdecec;
     --error-text: #b3261e;
+    --notice-bg: #eef2ff;
+    --notice-text: #3730a3;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -38,6 +40,8 @@ inline const std::string& loginPageStyle() {
       --accent-hover: #a5b4fc;
       --error-bg: #3a1f1f;
       --error-text: #f2a8a3;
+      --notice-bg: #232a4d;
+      --notice-text: #c7d2fe;
     }
   }
   * { box-sizing: border-box; }
@@ -144,6 +148,16 @@ inline const std::string& loginPageStyle() {
   .error {
     background: var(--error-bg);
     color: var(--error-text);
+    font-size: 14px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin: 0 0 18px;
+  }
+  /* Informational, not a failure: the sign-in was interrupted rather than
+     refused, so it must not read like "invalid username or password". */
+  .notice {
+    background: var(--notice-bg);
+    color: var(--notice-text);
     font-size: 14px;
     padding: 10px 12px;
     border-radius: 8px;
