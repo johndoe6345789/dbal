@@ -169,6 +169,15 @@ if(BUILD_TESTING)
         tests/security/sql_injection_test.cpp
         tests/unit/query_procedures_test.cpp
         tests/unit/schema_loader_test.cpp
+        # Loader tests. These need nothing beyond the core/ sources already
+        # linked below -- no adapter, no database -- but two of them were
+        # parked in DBAL_INTEGRATION_TEST_SOURCES, which is gated behind
+        # BUILD_INTEGRATION_TESTS and its testcontainers Postgres/MySQL. They
+        # therefore never ran anywhere. entity_loader_refactor_test was in no
+        # target at all and had drifted out of compiling entirely.
+        tests/unit/core_loaders_test.cpp
+        tests/unit/entity_loader_gtest.cpp
+        tests/unit/entity_loader_refactor_test.cpp
         tests/security/oidc_rsa_keypair_test.cpp
         tests/security/schema_acl_registry_test.cpp
         tests/security/saml_xmldsig_test.cpp
@@ -191,6 +200,7 @@ if(BUILD_TESTING)
         ${CMAKE_CURRENT_SOURCE_DIR}/src/core/loaders/schema_validator.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/core/loaders/json_parser.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/core/loaders/schema_cache.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/core/metadata_cache.cpp
     )
 
     add_executable(dbal_unit_tests ${DBAL_UNIT_TEST_SOURCES})
@@ -220,6 +230,46 @@ if(BUILD_TESTING)
     )
 
     add_test(NAME dbal_unit_tests COMMAND dbal_unit_tests --gtest_output=xml:test_results.xml)
+
+    # Standalone assert-based programs. They predate the GTest suites and each
+    # define their own main(), so they cannot be linked into dbal_unit_tests --
+    # which is why they ended up in no target at all and silently rotted
+    # (entity_loader_test still loaded *.yaml, a format dropped when yaml-cpp
+    # was removed). Registered here as their own executables so ctest runs them.
+    #
+    # Not included, and why:
+    #   client_test.cpp               needs the full client library
+    #   thread_safety_test.cpp        needs daemon/server.hpp, i.e. Drogon
+    #   http_server_security_test.cpp connects to a live host:port, so it is an
+    #                                 integration probe rather than a unit test
+    foreach(standalone query_test entity_loader_test)
+        add_executable(dbal_${standalone} tests/unit/${standalone}.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/core/entity_loader.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/core/loaders/field_parser.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/core/loaders/relation_parser.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/core/loaders/schema_validator.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/core/loaders/json_parser.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/core/loaders/schema_cache.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/core/metadata_cache.cpp
+        )
+        target_include_directories(dbal_${standalone} PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/dbal
+        )
+        target_link_libraries(dbal_${standalone} PRIVATE
+            nlohmann_json::nlohmann_json
+            spdlog::spdlog
+            fmt::fmt
+        )
+        add_test(NAME dbal_${standalone} COMMAND dbal_${standalone})
+    endforeach()
+
+    # entity_loader_test reads the real schema tree; tell it where that is so
+    # it does not have to guess from the build directory's location.
+    set_tests_properties(dbal_entity_loader_test PROPERTIES
+        ENVIRONMENT "DBAL_SCHEMA_ROOT=${DBAL_REPO_ROOT}/shared/api/schema")
 endif()
 
 # ===== Integration Tests =====
@@ -295,9 +345,10 @@ if(BUILD_INTEGRATION_TESTS)
         tests/unit/sql_parser_test.cpp
         tests/unit/supabase_utils_test.cpp
         tests/unit/core_utils_test.cpp
-        tests/unit/core_loaders_test.cpp
         tests/unit/prisma_gen_test.cpp
-        tests/unit/entity_loader_gtest.cpp
+        # core_loaders_test and entity_loader_gtest moved to
+        # DBAL_UNIT_TEST_SOURCES: they touch no adapter and no database, so
+        # gating them behind testcontainers meant they never ran.
         tests/unit/sqlite_utils_test.cpp
         tests/unit/sqlite_adapter_internals_test.cpp
         tests/unit/sql_adapter_utils_test.cpp

@@ -98,16 +98,32 @@ jobs:
       # CMakeLists resolves DBAL_REPO_ROOT as production/.., i.e. libraries/dbal,
       # so shared/ and templates/ are found in place. It also runs
       # shared/tools/codegen/gen_types.py to emit types.generated.hpp when absent.
+      # BUILD_TESTING=ON is what makes the GTest suites compile at all. It
+      # defaults to OFF (production Docker builds do not copy tests/), and this
+      # workflow never overrode it -- so every unit and security test under
+      # tests/ was dead weight in CI: built never, run never. gtest/1.14.0 is
+      # already a Conan requirement and find_package(GTest REQUIRED) already
+      # runs unconditionally, so nothing else has to change to switch them on.
+      #
+      # BUILD_INTEGRATION_TESTS stays off: those want live PostgreSQL/MySQL via
+      # testcontainers, which is separate CI plumbing.
       - name: Configure
         env:
           TOOLCHAIN: ${{ steps.toolchain.outputs.path }}
         run: |
           cmake -S production -B _build/cmake -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=ON \
             -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN"
 
       - name: Build
         run: cmake --build _build/cmake --parallel "$(nproc)"
+
+      # --no-tests=error so that a future refactor which stops registering the
+      # test target fails loudly instead of reporting a green run with 0 tests,
+      # which is the failure mode that hid these suites in the first place.
+      - name: Test
+        run: ctest --test-dir _build/cmake --output-on-failure --no-tests=error
 
       # Asserts the ELF machine type, so the arm64 leg proves it really produced
       # an aarch64 binary rather than silently building x86 twice.

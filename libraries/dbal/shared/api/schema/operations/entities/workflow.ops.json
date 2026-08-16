@@ -6,16 +6,23 @@
         "required": [
           "name",
           "nodes",
-          "edges",
-          "enabled"
+          "edges"
         ],
         "optional": [
           "tenantId",
           "description",
           "version",
+          "status",
+          "category",
+          "isPublished",
+          "isArchived",
+          "executionConfig",
+          "metadata",
           "createdAt",
           "updatedAt",
-          "createdBy"
+          "createdBy",
+          "updatedBy",
+          "enabled"
         ]
       },
       "output": "Workflow",
@@ -91,11 +98,18 @@
           "description",
           "nodes",
           "edges",
-          "enabled",
           "version",
+          "status",
+          "category",
+          "isPublished",
+          "isArchived",
+          "executionConfig",
+          "metadata",
           "createdAt",
           "updatedAt",
-          "createdBy"
+          "createdBy",
+          "updatedBy",
+          "enabled"
         ]
       },
       "output": "Workflow",
