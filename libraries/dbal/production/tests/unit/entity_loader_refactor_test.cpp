@@ -233,7 +233,8 @@ TEST(EntitySchemaLoaderTest, LoadSchemaIntegration) {
     }
 }
 
-int main(int argc, char** argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
+// No main() here on purpose: this file is linked into the shared
+// dbal_unit_tests binary, which gets its entry point from GTest::Main. A
+// second main() in the same binary is a duplicate-symbol link error, which is
+// why this file sat outside the target -- and therefore uncompiled -- rather
+// than being fixed.
