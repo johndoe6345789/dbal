@@ -40,8 +40,35 @@
     },
     "enabled": {
       "type": "boolean",
-      "description": "Whether workflow is active",
-      "required": true,
+      "description": "DEPRECATED — superseded by 'status'. Nothing reads it: no seed record sets it, no UI renders it, and the workflow engine's 'enabled' flags belong to triggers/retry/rate-limit policies, not to the workflow itself. Kept as a nullable column so existing rows and any caller still sending it keep working; drop it once workflow.ops.json no longer lists it. Was required:true while every seed omitted it, which made the declaration unsatisfiable.",
+      "optional": true,
+      "nullable": true,
+      "default": false
+    },
+    "status": {
+      "type": "string",
+      "description": "Lifecycle state — the authoritative one. Canonical values are 'draft' | 'active' | 'paused' | 'archived' (the WorkflowStatus union the UI renders and filters on); left as a plain string rather than an enum because rows predating the field are absent and read as 'draft'. Indexed on (tenantId, status) and used by the workflows:{tenantId}:{status} cache key.",
+      "optional": true,
+      "nullable": true
+    },
+    "category": {
+      "type": "string",
+      "description": "Grouping label, e.g. 'automation' or 'utilities'. Indexed on (tenantId, category).",
+      "optional": true,
+      "nullable": true
+    },
+    "isPublished": {
+      "type": "boolean",
+      "description": "Whether this workflow is published. Indexed on (tenantId, isPublished); raised by the workflow.published event.",
+      "optional": true,
+      "nullable": true,
+      "default": false
+    },
+    "isArchived": {
+      "type": "boolean",
+      "description": "Soft-delete marker — this is the field named by softDeleteField below, so it must exist for soft delete to work.",
+      "optional": true,
+      "nullable": true,
       "default": false
     },
     "version": {
@@ -65,6 +92,24 @@
     "createdBy": {
       "type": "string",
       "description": "User ID of creator",
+      "optional": true,
+      "nullable": true
+    },
+    "updatedBy": {
+      "type": "string",
+      "description": "User ID of last editor. Target of the 'updater' relation's foreign_key and of the workflow.updated event payload.",
+      "optional": true,
+      "nullable": true
+    },
+    "executionConfig": {
+      "type": "json",
+      "description": "Execution tuning, e.g. { timeout, retryStrategy, maxRetries }",
+      "optional": true,
+      "nullable": true
+    },
+    "metadata": {
+      "type": "json",
+      "description": "Free-form annotations, e.g. { author, tags }",
       "optional": true,
       "nullable": true
     }

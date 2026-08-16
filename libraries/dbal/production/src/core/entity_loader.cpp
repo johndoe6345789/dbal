@@ -104,8 +104,14 @@ std::vector<std::string> EntitySchemaLoader::findJsonFiles(const std::string& di
 EntitySchema EntitySchemaLoader::parseJson(const nlohmann::json& node) {
     EntitySchema schema;
 
+    // entity -> displayName -> name, the same precedence adapters/schema_loader.hpp
+    // uses. Omitting displayName here meant workspace.json (which has only
+    // displayName) was named "" and dropped with "Schema has no name", while
+    // the CRUD loader registered it happily.
     if (node.contains("entity"))
         schema.name = node.value("entity", std::string(""));
+    else if (node.contains("displayName"))
+        schema.name = node.value("displayName", std::string(""));
     else if (node.contains("name"))
         schema.name = node.value("name", std::string(""));
 
@@ -117,6 +123,31 @@ EntitySchema EntitySchemaLoader::parseJson(const nlohmann::json& node) {
     if (node.contains("fields")) {
         for (auto& [fieldName, fieldNode] : node["fields"].items()) {
             schema.fields.push_back(fieldParser.parseField(fieldName, fieldNode));
+        }
+    }
+
+    // Auto-add tenantId field if top-level tenantId: true is set.
+    //
+    // Mirrors adapters/schema_loader.hpp, where a top-level "tenantId": true
+    // means the column is implicit rather than spelled out under "fields".
+    // This loader lacked it, so the two disagreed about what a schema
+    // contains: the CRUD loader synthesised the column while this one did
+    // not, and every schema that indexes tenantId failed validation here with
+    // "Index references non-existent field 'tenantId'" and was dropped --
+    // taking its ACL out of SchemaAclRegistry, which fails open. Same
+    // keep-the-two-loaders-in-sync trap as loadFromFile vs loadFromDirectory.
+    if (node.contains("tenantId") && node["tenantId"].is_boolean() &&
+        node["tenantId"].get<bool>()) {
+        bool hasTenantField = false;
+        for (const auto& field : schema.fields)
+            if (field.name == "tenantId") { hasTenantField = true; break; }
+        if (!hasTenantField) {
+            EntityField tenantField;
+            tenantField.name     = "tenantId";
+            tenantField.type     = "string";
+            tenantField.required = false;
+            tenantField.nullable = true;
+            schema.fields.push_back(tenantField);
         }
     }
 
