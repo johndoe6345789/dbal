@@ -3,9 +3,14 @@
   "version": "1.0",
   "description": "Installed package metadata",
   "fields": {
-    "packageId": {
+    "id": {
       "type": "string",
       "primary": true,
+      "generated": true
+    },
+    "packageId": {
+      "type": "string",
+      "required": true,
       "description": "Package identifier"
     },
     "tenantId": {
@@ -39,6 +44,11 @@
       "fields": [
         "tenantId"
       ]
+    },
+    {
+      "fields": [
+        "packageId"
+      ]
     }
   ],
   "relations": {
@@ -53,6 +63,7 @@
   "acl": {
     "create": {
       "role": [
+        "god",
         "supergod"
       ]
     },
@@ -64,11 +75,13 @@
     },
     "update": {
       "role": [
+        "god",
         "supergod"
       ]
     },
     "delete": {
       "role": [
+        "god",
         "supergod"
       ]
     }
