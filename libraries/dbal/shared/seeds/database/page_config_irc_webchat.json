@@ -1,0 +1,49 @@
+{
+  "entity": "PageConfig",
+  "version": "1.0",
+  "description": "Page routes for the irc_webchat system package (synced from packages/irc_webchat/page-config/page-config.json -- regenerate via scripts/sync_page_configs.py, don't hand-edit)",
+  "records": [
+    {
+      "id": "page_irc_home",
+      "path": "/irc",
+      "title": "IRC Chat",
+      "packageId": "irc_webchat",
+      "component": "irc_home",
+      "level": 1,
+      "requiresAuth": true,
+      "isPublished": true,
+      "sortOrder": 80,
+      "tenantId": "system"
+    },
+    {
+      "id": "page_irc_channel",
+      "path": "/irc/channel/:channelId",
+      "title": "Channel",
+      "packageId": "irc_webchat",
+      "component": "irc_channel",
+      "level": 1,
+      "requiresAuth": true,
+      "isPublished": true,
+      "sortOrder": 81,
+      "tenantId": "system"
+    },
+    {
+      "id": "page_irc_admin",
+      "path": "/admin/irc",
+      "title": "IRC Management",
+      "packageId": "irc_webchat",
+      "component": "irc_admin",
+      "level": 3,
+      "requiresAuth": true,
+      "isPublished": true,
+      "sortOrder": 82,
+      "tenantId": "system"
+    }
+  ],
+  "metadata": {
+    "bootstrap": true,
+    "skipIfExists": true,
+    "timestampField": "createdAt",
+    "useCurrentTimestamp": true
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "entity": "PageConfig",
+  "version": "1.0",
+  "description": "Page routes for the notification_center system package (synced from packages/notification_center/page-config/page-config.json -- regenerate via scripts/sync_page_configs.py, don't hand-edit)",
+  "records": [
+    {
+      "id": "page_notifications_inbox",
+      "path": "/notifications",
+      "title": "Notifications",
+      "packageId": "notification_center",
+      "component": "notifications_inbox",
+      "level": 1,
+      "requiresAuth": true,
+      "isPublished": true,
+      "sortOrder": 30,
+      "tenantId": "system"
+    },
+    {
+      "id": "page_notifications_settings",
+      "path": "/settings/notifications",
+      "title": "Notification Settings",
+      "packageId": "notification_center",
+      "component": "notification_settings",
+      "level": 1,
+      "requiresAuth": true,
+      "isPublished": true,
+      "sortOrder": 31,
+      "tenantId": "system"
+    }
+  ],
+  "metadata": {
+    "bootstrap": true,
+    "skipIfExists": true,
+    "timestampField": "createdAt",
+    "useCurrentTimestamp": true
+  }
+}

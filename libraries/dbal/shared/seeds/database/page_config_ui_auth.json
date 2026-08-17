@@ -1,0 +1,61 @@
+{
+  "entity": "PageConfig",
+  "version": "1.0",
+  "description": "Page routes for the ui_auth system package (synced from packages/ui_auth/page-config/page-config.json -- regenerate via scripts/sync_page_configs.py, don't hand-edit)",
+  "records": [
+    {
+      "id": "page_register",
+      "path": "/register",
+      "title": "Register",
+      "packageId": "ui_auth",
+      "component": "register_form",
+      "level": 0,
+      "requiresAuth": false,
+      "isPublished": true,
+      "sortOrder": 2,
+      "tenantId": "system"
+    },
+    {
+      "id": "page_forgot_password",
+      "path": "/forgot-password",
+      "title": "Forgot Password",
+      "packageId": "ui_auth",
+      "component": "forgot_password_form",
+      "level": 0,
+      "requiresAuth": false,
+      "isPublished": true,
+      "sortOrder": 3,
+      "tenantId": "system"
+    },
+    {
+      "id": "page_change_password",
+      "path": "/settings/change-password",
+      "title": "Change Password",
+      "packageId": "ui_auth",
+      "component": "change_password_form",
+      "level": 1,
+      "requiresAuth": true,
+      "isPublished": true,
+      "sortOrder": 4,
+      "tenantId": "system"
+    },
+    {
+      "id": "page_access_denied",
+      "path": "/access-denied",
+      "title": "Access Denied",
+      "packageId": "ui_auth",
+      "component": "access_denied_view",
+      "level": 0,
+      "requiresAuth": false,
+      "isPublished": true,
+      "sortOrder": 5,
+      "tenantId": "system"
+    }
+  ],
+  "metadata": {
+    "bootstrap": true,
+    "skipIfExists": true,
+    "timestampField": "createdAt",
+    "useCurrentTimestamp": true
+  }
+}

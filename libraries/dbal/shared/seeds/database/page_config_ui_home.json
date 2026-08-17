@@ -1,0 +1,27 @@
+{
+  "entity": "PageConfig",
+  "version": "1.0",
+  "description": "Page routes for the ui_home system package (synced from packages/ui_home/page-config/page-config.json -- regenerate via scripts/sync_page_configs.py, don't hand-edit)",
+  "records": [
+    {
+      "id": "page_ui_home_root",
+      "path": "/",
+      "title": "MetaBuilder",
+      "description": "Data-driven application platform",
+      "packageId": "ui_home",
+      "component": "home_page",
+      "level": 0,
+      "requiresAuth": false,
+      "isPublished": true,
+      "sortOrder": 0,
+      "icon": "\ud83c\udfe0",
+      "tenantId": "system"
+    }
+  ],
+  "metadata": {
+    "bootstrap": true,
+    "skipIfExists": true,
+    "timestampField": "createdAt",
+    "useCurrentTimestamp": true
+  }
+}

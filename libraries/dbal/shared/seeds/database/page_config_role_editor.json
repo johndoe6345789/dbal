@@ -1,0 +1,25 @@
+{
+  "entity": "PageConfig",
+  "version": "1.0",
+  "description": "Page routes for the role_editor system package (synced from packages/role_editor/page-config/page-config.json -- regenerate via scripts/sync_page_configs.py, don't hand-edit)",
+  "records": [
+    {
+      "id": "page_role_editor_list",
+      "path": "/admin/roles",
+      "title": "Role Management",
+      "packageId": "role_editor",
+      "component": "role_list_admin",
+      "level": 3,
+      "requiresAuth": true,
+      "isPublished": true,
+      "sortOrder": 0,
+      "tenantId": "system"
+    }
+  ],
+  "metadata": {
+    "bootstrap": true,
+    "skipIfExists": true,
+    "timestampField": "createdAt",
+    "useCurrentTimestamp": true
+  }
+}

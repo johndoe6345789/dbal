@@ -1,0 +1,25 @@
+{
+  "entity": "PageConfig",
+  "version": "1.0",
+  "description": "Page routes for the data_table system package (synced from packages/data_table/page-config/page-config.json -- regenerate via scripts/sync_page_configs.py, don't hand-edit)",
+  "records": [
+    {
+      "id": "page_data_tables_demo",
+      "path": "/data-tables/demo",
+      "title": "Data Tables Demo",
+      "packageId": "data_table",
+      "component": "data_table_demo",
+      "level": 1,
+      "requiresAuth": true,
+      "isPublished": true,
+      "sortOrder": 60,
+      "tenantId": "system"
+    }
+  ],
+  "metadata": {
+    "bootstrap": true,
+    "skipIfExists": true,
+    "timestampField": "createdAt",
+    "useCurrentTimestamp": true
+  }
+}

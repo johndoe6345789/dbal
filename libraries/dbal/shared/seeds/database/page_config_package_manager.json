@@ -1,0 +1,25 @@
+{
+  "entity": "PageConfig",
+  "version": "1.0",
+  "description": "Page routes for the package_manager system package (synced from packages/package_manager/page-config/page-config.json -- regenerate via scripts/sync_page_configs.py, don't hand-edit)",
+  "records": [
+    {
+      "id": "page_package_manager_list",
+      "path": "/admin/packages",
+      "title": "Package Management",
+      "packageId": "package_manager",
+      "component": "package_list_admin",
+      "level": 4,
+      "requiresAuth": true,
+      "isPublished": true,
+      "sortOrder": 0,
+      "tenantId": "system"
+    }
+  ],
+  "metadata": {
+    "bootstrap": true,
+    "skipIfExists": true,
+    "timestampField": "createdAt",
+    "useCurrentTimestamp": true
+  }
+}

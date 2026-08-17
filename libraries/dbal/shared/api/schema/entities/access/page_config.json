@@ -49,8 +49,9 @@
     },
     "componentTree": {
       "type": "text",
-      "required": true,
-      "description": "Page layout configuration — a JSON-stringified component tree, routinely well over 255 characters, hence text rather than string"
+      "optional": true,
+      "nullable": true,
+      "description": "Page layout configuration — a JSON-stringified component tree, routinely well over 255 characters, hence text rather than string. Mutually exclusive with `component` in practice: a system package (see packages/ repo) sets `component` to a registered React component name and leaves this null; a user package built through the God Panel composer sets this and leaves `component` null. WorkspacePageSlot tries `component` first, falls back to this."
     },
     "level": {
       "type": "integer",

@@ -1,0 +1,25 @@
+{
+  "entity": "PageConfig",
+  "version": "1.0",
+  "description": "Page routes for the user_manager system package (synced from packages/user_manager/page-config/page-config.json -- regenerate via scripts/sync_page_configs.py, don't hand-edit)",
+  "records": [
+    {
+      "id": "page_user_manager_list",
+      "path": "/admin/users",
+      "title": "User Management",
+      "packageId": "user_manager",
+      "component": "user_list_admin",
+      "level": 3,
+      "requiresAuth": true,
+      "isPublished": true,
+      "sortOrder": 0,
+      "tenantId": "system"
+    }
+  ],
+  "metadata": {
+    "bootstrap": true,
+    "skipIfExists": true,
+    "timestampField": "createdAt",
+    "useCurrentTimestamp": true
+  }
+}
