@@ -52,21 +52,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # The builder stage is FROM ${BASE_REGISTRY}/base-apt:latest, defaulting
-      # to metabuilder/base-apt. That image used to be built here from a
-      # checkout of metabuilder, but deployment/ moved out of metabuilder into
-      # its own repo, so the build context path vanished and every run failed
-      # with "unable to prepare context: path
-      # _metabuilder/deployment/base-images not found". Pull the published
-      # image and retag it to the local name the Dockerfile expects -- the same
-      # thing metabuilder's own docker.yml does, and what the deployment repo's
-      # base-images.yml header documents.
+      # The builder stage is FROM ${BASE_REGISTRY}/base-conan-dbal:latest,
+      # defaulting to metabuilder/base-conan-dbal (switched from base-apt so
+      # the daemon's Conan dependencies -- drogon, boost, mongo-c-driver, ICU,
+      # LibXml2 -- resolve from a warm cache instead of compiling from source
+      # on every build; see the Dockerfile's header comment). That image is
+      # published by github.com/johndoe6345789/deployment, not built here, so
+      # pull it and retag it to the local name the Dockerfile expects -- the
+      # same thing metabuilder's own docker.yml does for its own bases, and
+      # what the deployment repo's base-images.yml header documents.
       #
       # A stale base is slower, never wrong: the Dockerfile re-runs its own
-      # dependency installation, so this never waits on the base pipeline.
-      - name: Pull base-apt
+      # `conan install --build=missing`, so this never waits on the base
+      # pipeline for a dependency added since the base was last published.
+      - name: Pull base-conan-dbal
         env:
-          REMOTE: ghcr.io/johndoe6345789/deployment/base-apt:latest
+          REMOTE: ghcr.io/johndoe6345789/deployment/base-conan-dbal:latest
         run: |
           if ! docker pull "$REMOTE"; then
             echo "::error::Could not pull $REMOTE"
@@ -75,7 +76,7 @@ jobs:
             echo "     once, including the manifest job that creates :latest."
             exit 1
           fi
-          docker tag "$REMOTE" metabuilder/base-apt:latest
+          docker tag "$REMOTE" metabuilder/base-conan-dbal:latest
 
       # Context is libraries/dbal: the Dockerfile reaches for both production/
       # and shared/, so it needs the directory that contains both.
