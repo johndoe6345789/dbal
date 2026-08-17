@@ -1,0 +1,54 @@
+{
+  "entity": "TenantTheme",
+  "version": "1.0",
+  "description": "Persisted light/dark theme color overrides for a tenant, so a God Panel styling change is visible to every visitor rather than only the editor's own browser (localStorage remains the instant-apply/offline cache).",
+  "fields": {
+    "id": {
+      "type": "string",
+      "primary": true,
+      "description": "Equal to tenantId — one row per tenant"
+    },
+    "tenantId": {
+      "type": "string",
+      "required": true
+    },
+    "lightColors": {
+      "type": "text",
+      "required": true,
+      "description": "JSON-stringified Record<string,string> of CSS custom properties"
+    },
+    "darkColors": {
+      "type": "text",
+      "required": true,
+      "description": "JSON-stringified Record<string,string> of CSS custom properties"
+    },
+    "updatedAt": {
+      "type": "bigint",
+      "optional": true,
+      "nullable": true
+    }
+  },
+  "acl": {
+    "create": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    },
+    "read": {
+      "public": true
+    },
+    "update": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    },
+    "delete": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    }
+  }
+}

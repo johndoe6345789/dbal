@@ -48,16 +48,16 @@
       "nullable": true
     },
     "componentTree": {
-      "type": "string",
+      "type": "text",
       "required": true,
-      "description": "Page layout configuration"
+      "description": "Page layout configuration — a JSON-stringified component tree, routinely well over 255 characters, hence text rather than string"
     },
     "level": {
       "type": "integer",
       "required": true,
-      "min": 1,
-      "max": 6,
-      "description": "Access level required (1=public, 6=supergod)"
+      "min": 0,
+      "max": 5,
+      "description": "Access level required, matching ROLE_LEVELS: 0=public, 1=user, 2=moderator, 3=admin, 4=god, 5=supergod"
     },
     "requiresAuth": {
       "type": "boolean",
