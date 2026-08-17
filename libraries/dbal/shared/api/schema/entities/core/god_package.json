@@ -1,0 +1,94 @@
+{
+  "entity": "GodPackage",
+  "version": "1.0",
+  "description": "A bespoke package composed by a god-tier user in the God Panel's package composer: a named bundle of references to already-built Workflow, PageConfig (routes/component-trees) and TenantTheme rows. Composing and publishing a package is what this entity supports; materializing/installing one into a target tenant is a separate, not-yet-built feature.",
+  "fields": {
+    "id": {
+      "type": "string",
+      "primary": true,
+      "generated": true
+    },
+    "name": {
+      "type": "string",
+      "required": true,
+      "max_length": 255,
+      "description": "The one required free-text field in the composer UI"
+    },
+    "description": {
+      "type": "text",
+      "optional": true,
+      "nullable": true
+    },
+    "category": {
+      "type": "string",
+      "required": true,
+      "description": "One of PackageManifest's fixed categories: social, entertainment, productivity, gaming, ecommerce, content, other"
+    },
+    "icon": {
+      "type": "string",
+      "optional": true,
+      "nullable": true,
+      "description": "Icon name from the app's existing icon set, picked via a filtered local picker, not typed"
+    },
+    "workflowIds": {
+      "type": "text",
+      "required": true,
+      "default": "[]",
+      "description": "JSON-stringified string[] of Workflow.id"
+    },
+    "pageConfigIds": {
+      "type": "text",
+      "required": true,
+      "default": "[]",
+      "description": "JSON-stringified string[] of PageConfig.id"
+    },
+    "themeId": {
+      "type": "string",
+      "optional": true,
+      "nullable": true,
+      "description": "TenantTheme.id, if this package bundles a theme"
+    },
+    "version": {
+      "type": "string",
+      "required": true,
+      "default": "1.0.0",
+      "description": "Auto-managed by the composer, not manually typed"
+    },
+    "tenantId": {
+      "type": "string",
+      "optional": true,
+      "nullable": true
+    },
+    "sortOrder": {
+      "type": "integer",
+      "required": true,
+      "default": 0
+    },
+    "isPublished": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    },
+    "createdAt": {
+      "type": "bigint",
+      "optional": true,
+      "nullable": true
+    },
+    "updatedAt": {
+      "type": "bigint",
+      "optional": true,
+      "nullable": true
+    }
+  },
+  "indexes": [
+    { "fields": ["tenantId"] },
+    { "fields": ["category"] },
+    { "fields": ["isPublished"] }
+  ],
+  "acl": {
+    "create": { "role": ["god", "supergod"] },
+    "read": { "public": true },
+    "update": { "role": ["god", "supergod"] },
+    "delete": { "role": ["god", "supergod"] }
+  }
+}
