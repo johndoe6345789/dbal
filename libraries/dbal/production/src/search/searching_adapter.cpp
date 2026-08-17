@@ -74,11 +74,22 @@ Result<ListResult<Json>> SearchingAdapter::search(const std::string& entityName,
     // Filter by entity and match across all mirrored fields. The filter clause
     // does not contribute to scoring, so relevance ordering is decided purely
     // by the text match.
+    //
+    // _entity.keyword, not _entity: dynamic mapping gives every mirrored
+    // string field a `text` type (analyzed -- lowercased by the standard
+    // analyzer) plus a `.keyword` sub-field (exact, unanalyzed). A `term`
+    // query against the analyzed `_entity` field compares the literal
+    // PascalCase entity name against lowercased tokens and can never match,
+    // so search silently returned zero hits for every entity, every query,
+    // regardless of DBAL_SEARCH_URL being configured and mirroring working
+    // correctly -- verified live: a fresh write landed in the ES index
+    // (_count incremented) but was still unfindable via this endpoint until
+    // the query targeted .keyword.
     Json body = {
         {"size", limit},
         {"query", {
             {"bool", {
-                {"filter", Json::array({ Json{{"term", {{"_entity", entityName}}}} })},
+                {"filter", Json::array({ Json{{"term", {{"_entity.keyword", entityName}}}} })},
                 {"must", Json::array({ Json{{"multi_match", {
                     {"query", query},
                     {"lenient", true}   // don't error on numeric/date fields
