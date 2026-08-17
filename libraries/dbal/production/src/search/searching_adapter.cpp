@@ -85,6 +85,15 @@ Result<ListResult<Json>> SearchingAdapter::search(const std::string& entityName,
     // correctly -- verified live: a fresh write landed in the ES index
     // (_count incremented) but was still unfindable via this endpoint until
     // the query targeted .keyword.
+    //
+    // type: phrase_prefix, not the multi_match default (best_fields): every
+    // caller of this endpoint is a live type-ahead box (SearchSelect.tsx)
+    // that queries on each keystroke, and best_fields only matches complete
+    // analyzed tokens -- "dash" scores zero hits against "Dashboard" until
+    // the whole word is typed, which reads as "search is broken" rather
+    // than "keep typing". phrase_prefix treats the final term as a prefix
+    // (and requires no index mapping change, unlike search_as_you_type
+    // fields), so "dash" and "user prof" both match mid-type.
     Json body = {
         {"size", limit},
         {"query", {
@@ -92,6 +101,7 @@ Result<ListResult<Json>> SearchingAdapter::search(const std::string& entityName,
                 {"filter", Json::array({ Json{{"term", {{"_entity.keyword", entityName}}}} })},
                 {"must", Json::array({ Json{{"multi_match", {
                     {"query", query},
+                    {"type", "phrase_prefix"},
                     {"lenient", true}   // don't error on numeric/date fields
                 }}} })}
             }}
