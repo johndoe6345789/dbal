@@ -4,6 +4,7 @@
   "description": "Initial package installation records for bootstrapping the system",
   "records": [
     {
+      "id": "installedpkg_package_manager_system",
       "packageId": "package_manager",
       "tenantId": null,
       "installedAt": 0,
@@ -12,6 +13,7 @@
       "config": "{\n  \"autoUpdate\": false,\n  \"systemPackage\": true,\n  \"uninstallProtection\": true\n}\n"
     },
     {
+      "id": "installedpkg_ui_header_system",
       "packageId": "ui_header",
       "tenantId": null,
       "installedAt": 0,
@@ -20,6 +22,7 @@
       "config": "{\n  \"systemPackage\": true\n}\n"
     },
     {
+      "id": "installedpkg_ui_footer_system",
       "packageId": "ui_footer",
       "tenantId": null,
       "installedAt": 0,
@@ -28,6 +31,7 @@
       "config": "{\n  \"systemPackage\": true\n}\n"
     },
     {
+      "id": "installedpkg_ui_home_system",
       "packageId": "ui_home",
       "tenantId": null,
       "installedAt": 0,
@@ -36,6 +40,7 @@
       "config": "{\n  \"systemPackage\": true,\n  \"defaultRoute\": \"/\",\n  \"publicAccess\": true\n}\n"
     },
     {
+      "id": "installedpkg_ui_auth_system",
       "packageId": "ui_auth",
       "tenantId": null,
       "installedAt": 0,
@@ -44,6 +49,7 @@
       "config": "{\n  \"systemPackage\": true\n}\n"
     },
     {
+      "id": "installedpkg_ui_login_system",
       "packageId": "ui_login",
       "tenantId": null,
       "installedAt": 0,
@@ -52,6 +58,7 @@
       "config": "{\n  \"systemPackage\": true\n}\n"
     },
     {
+      "id": "installedpkg_dashboard_system",
       "packageId": "dashboard",
       "tenantId": null,
       "installedAt": 0,
@@ -60,6 +67,7 @@
       "config": "{\n  \"systemPackage\": true,\n  \"defaultRoute\": \"/\"\n}\n"
     },
     {
+      "id": "installedpkg_user_manager_system",
       "packageId": "user_manager",
       "tenantId": null,
       "installedAt": 0,
@@ -68,6 +76,7 @@
       "config": "{\n  \"systemPackage\": true,\n  \"minLevel\": 4\n}\n"
     },
     {
+      "id": "installedpkg_role_editor_system",
       "packageId": "role_editor",
       "tenantId": null,
       "installedAt": 0,
@@ -76,6 +85,7 @@
       "config": "{\n  \"systemPackage\": false,\n  \"minLevel\": 4\n}\n"
     },
     {
+      "id": "installedpkg_admin_dialog_system",
       "packageId": "admin_dialog",
       "tenantId": null,
       "installedAt": 0,
@@ -84,6 +94,7 @@
       "config": "{\n  \"systemPackage\": false,\n  \"minLevel\": 4\n}\n"
     },
     {
+      "id": "installedpkg_database_manager_system",
       "packageId": "database_manager",
       "tenantId": null,
       "installedAt": 0,
@@ -92,6 +103,7 @@
       "config": "{\n  \"systemPackage\": false,\n  \"minLevel\": 5,\n  \"dangerousOperations\": true\n}\n"
     },
     {
+      "id": "installedpkg_schema_editor_system",
       "packageId": "schema_editor",
       "tenantId": null,
       "installedAt": 0,
