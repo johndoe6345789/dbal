@@ -51,6 +51,12 @@
       ],
       "required": true,
       "default": "string"
+    },
+    "sortOrder": {
+      "type": "integer",
+      "required": true,
+      "default": 0,
+      "description": "Position within a repeated value. A list-valued field is several rows sharing a name, rather than name.0, name.1 encoded as paths."
     }
   },
   "indexes": [
@@ -69,7 +75,8 @@
       "fields": [
         "auditLogId",
         "kind",
-        "name"
+        "name",
+        "sortOrder"
       ],
       "unique": true
     }

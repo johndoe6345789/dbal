@@ -16,6 +16,9 @@
       "$ref": "./core/workflow_node_param.json"
     },
     {
+      "$ref": "./core/workflow_node_condition.json"
+    },
+    {
       "$ref": "./core/workflow_edge.json"
     },
     {

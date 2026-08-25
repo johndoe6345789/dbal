@@ -1,0 +1,39 @@
+{
+  "entity": "WorkflowNodeCondition",
+  "version": "1.0",
+  "description": "One branch condition on a workflow step. field, operator and value are columns because a condition has a known shape -- keeping it as a parameter meant encoding conditions.0.field in a name, which is a document wearing a different hat.",
+  "fields": {
+    "id": { "type": "string", "primary": true, "generated": true },
+    "tenantId": { "type": "string", "optional": true, "nullable": true },
+    "nodeId": {
+      "type": "string",
+      "required": true,
+      "foreign_key": { "entity": "WorkflowNode", "field": "id", "on_delete": "cascade" }
+    },
+    "workflowId": {
+      "type": "string",
+      "required": true,
+      "foreign_key": { "entity": "Workflow", "field": "id", "on_delete": "cascade" },
+      "description": "Denormalised from nodeId so a workflow's conditions read in one request."
+    },
+    "field": { "type": "string", "required": true, "max_length": 200, "description": "What the condition tests" },
+    "operator": { "type": "string", "required": true, "max_length": 20, "description": "Comparison, e.g. eq or gt" },
+    "value": { "type": "text", "optional": true, "nullable": true, "description": "What it is compared against" },
+    "sortOrder": { "type": "integer", "required": true, "default": 0 }
+  },
+  "indexes": [
+    { "fields": ["nodeId"] },
+    { "fields": ["workflowId"] },
+    { "fields": ["field"] },
+    { "fields": ["nodeId", "sortOrder"], "unique": true }
+  ],
+  "relations": {
+    "node": { "type": "belongs-to", "entity": "WorkflowNode", "foreign_key": "nodeId", "on_delete": "cascade" }
+  },
+  "acl": {
+    "create": { "role": ["god", "supergod"] },
+    "read": { "public": true },
+    "update": { "role": ["god", "supergod"] },
+    "delete": { "role": ["god", "supergod"] }
+  }
+}
