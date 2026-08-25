@@ -1,7 +1,7 @@
 {
-  "entity": "WorkflowNodeParam",
+  "entity": "AuditLogField",
   "version": "1.0",
-  "description": "One parameter of one workflow step. A row per parameter, so a value can be read or changed without rewriting the workflow, and every step using a given setting is a query.",
+  "description": "One field of an audit entry: a detail, or one side of a before/after pair. `kind` says which, so details, oldValue and newValue share one table instead of three documents.",
   "fields": {
     "id": {
       "type": "string",
@@ -13,24 +13,24 @@
       "optional": true,
       "nullable": true
     },
-    "nodeId": {
+    "auditLogId": {
       "type": "string",
       "required": true,
       "foreign_key": {
-        "entity": "WorkflowNode",
+        "entity": "AuditLog",
         "field": "id",
         "on_delete": "cascade"
       }
     },
-    "workflowId": {
-      "type": "string",
+    "kind": {
+      "type": "enum",
+      "values": [
+        "detail",
+        "old",
+        "new"
+      ],
       "required": true,
-      "foreign_key": {
-        "entity": "Workflow",
-        "field": "id",
-        "on_delete": "cascade"
-      },
-      "description": "Denormalised from nodeId. The data layer filters one column at a time and cannot join, so without it reading a workflow costs a request per step."
+      "default": "detail"
     },
     "name": {
       "type": "string",
@@ -51,39 +51,34 @@
       ],
       "required": true,
       "default": "string"
-    },
-    "sortOrder": {
-      "type": "integer",
-      "required": true,
-      "default": 0,
-      "description": "Position within a repeated value. A list-valued property is several rows sharing a name, which is how a relational schema says \"many\"."
     }
   },
   "indexes": [
     {
       "fields": [
-        "workflowId"
+        "auditLogId"
       ]
     },
     {
       "fields": [
-        "nodeId"
+        "auditLogId",
+        "kind"
       ]
     },
     {
       "fields": [
-        "nodeId",
-        "name",
-        "sortOrder"
+        "auditLogId",
+        "kind",
+        "name"
       ],
       "unique": true
     }
   ],
   "relations": {
-    "node": {
+    "entry": {
       "type": "belongs-to",
-      "entity": "WorkflowNode",
-      "foreign_key": "nodeId",
+      "entity": "AuditLog",
+      "foreign_key": "auditLogId",
       "on_delete": "cascade"
     }
   },

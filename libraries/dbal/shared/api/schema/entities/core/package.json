@@ -31,12 +31,6 @@
     "enabled": {
       "type": "boolean",
       "required": true
-    },
-    "config": {
-      "type": "string",
-      "optional": true,
-      "nullable": true,
-      "description": "JSON package configuration"
     }
   },
   "indexes": [

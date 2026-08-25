@@ -1,7 +1,7 @@
 {
-  "entity": "WorkflowNodeParam",
+  "entity": "StyleRuleProp",
   "version": "1.0",
-  "description": "One parameter of one workflow step. A row per parameter, so a value can be read or changed without rewriting the workflow, and every step using a given setting is a query.",
+  "description": "One CSS declaration on one rule -- property and value. Queryable, so 'everything using this colour' is answerable.",
   "fields": {
     "id": {
       "type": "string",
@@ -13,24 +13,24 @@
       "optional": true,
       "nullable": true
     },
-    "nodeId": {
+    "ruleId": {
       "type": "string",
       "required": true,
       "foreign_key": {
-        "entity": "WorkflowNode",
+        "entity": "StyleRule",
         "field": "id",
         "on_delete": "cascade"
       }
     },
-    "workflowId": {
+    "styleClassId": {
       "type": "string",
       "required": true,
       "foreign_key": {
-        "entity": "Workflow",
+        "entity": "StyleClass",
         "field": "id",
         "on_delete": "cascade"
       },
-      "description": "Denormalised from nodeId. The data layer filters one column at a time and cannot join, so without it reading a workflow costs a request per step."
+      "description": "Denormalised from ruleId so a sheet reads in one request."
     },
     "name": {
       "type": "string",
@@ -39,51 +39,33 @@
     },
     "value": {
       "type": "text",
-      "optional": true,
-      "nullable": true
-    },
-    "valueType": {
-      "type": "enum",
-      "values": [
-        "string",
-        "number",
-        "boolean"
-      ],
-      "required": true,
-      "default": "string"
-    },
-    "sortOrder": {
-      "type": "integer",
-      "required": true,
-      "default": 0,
-      "description": "Position within a repeated value. A list-valued property is several rows sharing a name, which is how a relational schema says \"many\"."
+      "required": true
     }
   },
   "indexes": [
     {
       "fields": [
-        "workflowId"
+        "styleClassId"
       ]
     },
     {
       "fields": [
-        "nodeId"
+        "ruleId"
       ]
     },
     {
       "fields": [
-        "nodeId",
-        "name",
-        "sortOrder"
+        "ruleId",
+        "name"
       ],
       "unique": true
     }
   ],
   "relations": {
-    "node": {
+    "rule": {
       "type": "belongs-to",
-      "entity": "WorkflowNode",
-      "foreign_key": "nodeId",
+      "entity": "StyleRule",
+      "foreign_key": "ruleId",
       "on_delete": "cascade"
     }
   },

@@ -1,7 +1,7 @@
 {
-  "entity": "WorkflowNodeParam",
+  "entity": "NotificationDatum",
   "version": "1.0",
-  "description": "One parameter of one workflow step. A row per parameter, so a value can be read or changed without rewriting the workflow, and every step using a given setting is a query.",
+  "description": "One field of a notification's payload. Payload shape varies by notification type, which is why it was a document; a row per field keeps it open-ended and still queryable.",
   "fields": {
     "id": {
       "type": "string",
@@ -13,24 +13,14 @@
       "optional": true,
       "nullable": true
     },
-    "nodeId": {
+    "notificationId": {
       "type": "string",
       "required": true,
       "foreign_key": {
-        "entity": "WorkflowNode",
+        "entity": "Notification",
         "field": "id",
         "on_delete": "cascade"
       }
-    },
-    "workflowId": {
-      "type": "string",
-      "required": true,
-      "foreign_key": {
-        "entity": "Workflow",
-        "field": "id",
-        "on_delete": "cascade"
-      },
-      "description": "Denormalised from nodeId. The data layer filters one column at a time and cannot join, so without it reading a workflow costs a request per step."
     },
     "name": {
       "type": "string",
@@ -51,39 +41,32 @@
       ],
       "required": true,
       "default": "string"
-    },
-    "sortOrder": {
-      "type": "integer",
-      "required": true,
-      "default": 0,
-      "description": "Position within a repeated value. A list-valued property is several rows sharing a name, which is how a relational schema says \"many\"."
     }
   },
   "indexes": [
     {
       "fields": [
-        "workflowId"
+        "notificationId"
       ]
     },
     {
       "fields": [
-        "nodeId"
-      ]
-    },
-    {
-      "fields": [
-        "nodeId",
-        "name",
-        "sortOrder"
+        "notificationId",
+        "name"
       ],
       "unique": true
+    },
+    {
+      "fields": [
+        "name"
+      ]
     }
   ],
   "relations": {
-    "node": {
+    "notification": {
       "type": "belongs-to",
-      "entity": "WorkflowNode",
-      "foreign_key": "nodeId",
+      "entity": "Notification",
+      "foreign_key": "notificationId",
       "on_delete": "cascade"
     }
   },

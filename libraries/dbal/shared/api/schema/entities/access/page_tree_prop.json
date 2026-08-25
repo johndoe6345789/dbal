@@ -55,6 +55,12 @@
       "required": true,
       "default": "string",
       "description": "How to parse value back into a prop"
+    },
+    "sortOrder": {
+      "type": "integer",
+      "required": true,
+      "default": 0,
+      "description": "Position within a repeated value. A list-valued property is several rows sharing a name, which is how a relational schema says \"many\"."
     }
   },
   "indexes": [
@@ -70,15 +76,16 @@
     },
     {
       "fields": [
-        "nodeId",
         "name"
-      ],
-      "unique": true
+      ]
     },
     {
       "fields": [
-        "name"
-      ]
+        "nodeId",
+        "name",
+        "sortOrder"
+      ],
+      "unique": true
     }
   ],
   "relations": {

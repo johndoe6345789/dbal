@@ -1,0 +1,86 @@
+{
+  "entity": "StyleRule",
+  "version": "1.0",
+  "description": "One named CSS class in a style sheet. Its declarations are rows in StyleRuleProp.",
+  "fields": {
+    "id": {
+      "type": "string",
+      "primary": true,
+      "generated": true
+    },
+    "tenantId": {
+      "type": "string",
+      "optional": true,
+      "nullable": true
+    },
+    "styleClassId": {
+      "type": "string",
+      "required": true,
+      "foreign_key": {
+        "entity": "StyleClass",
+        "field": "id",
+        "on_delete": "cascade"
+      }
+    },
+    "ruleKey": {
+      "type": "string",
+      "required": true,
+      "max_length": 100
+    },
+    "name": {
+      "type": "string",
+      "required": true,
+      "max_length": 100
+    },
+    "sortOrder": {
+      "type": "integer",
+      "required": true,
+      "default": 0
+    }
+  },
+  "indexes": [
+    {
+      "fields": [
+        "styleClassId"
+      ]
+    },
+    {
+      "fields": [
+        "styleClassId",
+        "ruleKey"
+      ],
+      "unique": true
+    }
+  ],
+  "relations": {
+    "props": {
+      "type": "has-many",
+      "entity": "StyleRuleProp",
+      "foreign_key": "ruleId",
+      "cascade_delete": true
+    }
+  },
+  "acl": {
+    "create": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    },
+    "read": {
+      "public": true
+    },
+    "update": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    },
+    "delete": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    }
+  }
+}

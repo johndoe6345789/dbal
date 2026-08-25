@@ -55,16 +55,6 @@
       "nullable": true,
       "description": "ID of the affected entity"
     },
-    "oldValue": {
-      "type": "json",
-      "nullable": true,
-      "description": "Previous state of the entity"
-    },
-    "newValue": {
-      "type": "json",
-      "nullable": true,
-      "description": "New state of the entity"
-    },
     "ipAddress": {
       "type": "string",
       "nullable": true,
@@ -75,11 +65,6 @@
       "type": "string",
       "nullable": true,
       "description": "Client user agent string"
-    },
-    "details": {
-      "type": "json",
-      "nullable": true,
-      "description": "Additional context as JSON"
     },
     "timestamp": {
       "type": "bigint",

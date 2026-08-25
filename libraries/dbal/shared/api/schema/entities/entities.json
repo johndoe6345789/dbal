@@ -22,6 +22,18 @@
       "$ref": "./core/package.json"
     },
     {
+      "$ref": "./core/style_class.json"
+    },
+    {
+      "$ref": "./core/style_rule.json"
+    },
+    {
+      "$ref": "./core/style_rule_prop.json"
+    },
+    {
+      "$ref": "./core/installed_package_setting.json"
+    },
+    {
       "$ref": "./core/ui_page.json"
     },
     {
@@ -52,7 +64,13 @@
       "$ref": "./packages/notification.json"
     },
     {
+      "$ref": "./packages/notification_datum.json"
+    },
+    {
       "$ref": "./packages/audit_log.json"
+    },
+    {
+      "$ref": "./packages/audit_log_field.json"
     },
     {
       "$ref": "./packages/media.json"
@@ -82,6 +100,9 @@
       "$ref": "./pastebin/snippet.json"
     },
     {
+      "$ref": "./pastebin/snippet_param.json"
+    },
+    {
       "$ref": "./pastebin/snippet_comment.json"
     },
     {
@@ -101,6 +122,9 @@
     },
     {
       "$ref": "./youtube_clone/video.json"
+    },
+    {
+      "$ref": "./youtube_clone/video_tag.json"
     }
   ]
 }

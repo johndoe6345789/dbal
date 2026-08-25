@@ -1,0 +1,86 @@
+{
+  "entity": "VideoTag",
+  "version": "1.0",
+  "description": "One tag on one video. A row per tag, which is what makes 'every video tagged database' a query instead of a scan.",
+  "fields": {
+    "id": {
+      "type": "string",
+      "primary": true,
+      "generated": true
+    },
+    "tenantId": {
+      "type": "string",
+      "optional": true,
+      "nullable": true
+    },
+    "videoId": {
+      "type": "string",
+      "required": true,
+      "foreign_key": {
+        "entity": "Video",
+        "field": "id",
+        "on_delete": "cascade"
+      }
+    },
+    "tag": {
+      "type": "string",
+      "required": true,
+      "max_length": 100
+    },
+    "sortOrder": {
+      "type": "integer",
+      "required": true,
+      "default": 0
+    }
+  },
+  "indexes": [
+    {
+      "fields": [
+        "videoId"
+      ]
+    },
+    {
+      "fields": [
+        "tag"
+      ]
+    },
+    {
+      "fields": [
+        "videoId",
+        "tag"
+      ],
+      "unique": true
+    }
+  ],
+  "relations": {
+    "video": {
+      "type": "belongs-to",
+      "entity": "Video",
+      "foreign_key": "videoId",
+      "on_delete": "cascade"
+    }
+  },
+  "acl": {
+    "create": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    },
+    "read": {
+      "public": true
+    },
+    "update": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    },
+    "delete": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    }
+  }
+}

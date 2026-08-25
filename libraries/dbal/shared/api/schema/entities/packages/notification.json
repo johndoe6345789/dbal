@@ -60,11 +60,6 @@
       "index": true,
       "description": "Whether notification has been read"
     },
-    "data": {
-      "type": "json",
-      "nullable": true,
-      "description": "Additional data (action URLs, entity refs, etc.)"
-    },
     "createdAt": {
       "type": "bigint",
       "required": true,

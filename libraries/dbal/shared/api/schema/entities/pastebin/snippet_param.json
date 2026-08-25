@@ -1,0 +1,98 @@
+{
+  "entity": "SnippetParam",
+  "version": "1.0",
+  "description": "One declared input of a snippet. A row per parameter, so the inputs a snippet takes can be listed, counted and searched without parsing every snippet.",
+  "fields": {
+    "id": {
+      "type": "string",
+      "primary": true,
+      "generated": true
+    },
+    "tenantId": {
+      "type": "string",
+      "optional": true,
+      "nullable": true
+    },
+    "snippetId": {
+      "type": "string",
+      "required": true,
+      "foreign_key": {
+        "entity": "Snippet",
+        "field": "id",
+        "on_delete": "cascade"
+      }
+    },
+    "name": {
+      "type": "string",
+      "required": true,
+      "max_length": 100
+    },
+    "label": {
+      "type": "string",
+      "optional": true,
+      "nullable": true,
+      "max_length": 255
+    },
+    "paramType": {
+      "type": "string",
+      "required": true,
+      "max_length": 50,
+      "description": "Declared type, e.g. integer or string"
+    },
+    "defaultValue": {
+      "type": "text",
+      "optional": true,
+      "nullable": true
+    },
+    "sortOrder": {
+      "type": "integer",
+      "required": true,
+      "default": 0
+    }
+  },
+  "indexes": [
+    {
+      "fields": [
+        "snippetId"
+      ]
+    },
+    {
+      "fields": [
+        "snippetId",
+        "name"
+      ],
+      "unique": true
+    }
+  ],
+  "relations": {
+    "snippet": {
+      "type": "belongs-to",
+      "entity": "Snippet",
+      "foreign_key": "snippetId",
+      "on_delete": "cascade"
+    }
+  },
+  "acl": {
+    "create": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    },
+    "read": {
+      "public": true
+    },
+    "update": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    },
+    "delete": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    }
+  }
+}

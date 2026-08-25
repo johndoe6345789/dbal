@@ -79,16 +79,6 @@
         "Other"
       ]
     },
-    "tags": {
-      "type": "Json",
-      "required": false,
-      "description": "Array of tags for searchability",
-      "example": [
-        "tutorial",
-        "video-platform",
-        "nodejs"
-      ]
-    },
     "views": {
       "type": "Number",
       "required": true,

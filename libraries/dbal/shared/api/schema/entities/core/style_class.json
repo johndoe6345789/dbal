@@ -17,11 +17,6 @@
       "description": "Tenant isolation ID",
       "optional": true,
       "nullable": true
-    },
-    "classes": {
-      "type": "text",
-      "description": "Serialized JSON array of { id, name, props } CSS classes",
-      "required": true
     }
   }
 }

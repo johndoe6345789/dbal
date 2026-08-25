@@ -59,12 +59,6 @@
       "max_length": 100,
       "description": "Entry function name for Python runner"
     },
-    "inputParameters": {
-      "type": "text",
-      "optional": true,
-      "nullable": true,
-      "description": "JSON-encoded input parameter definitions"
-    },
     "files": {
       "type": "text",
       "optional": true,
@@ -111,7 +105,7 @@
       "optional": true,
       "nullable": true,
       "max_length": 64,
-      "description": "Secret share token — set to enable unauthenticated read via /share/<token>"
+      "description": "Secret share token \u2014 set to enable unauthenticated read via /share/<token>"
     }
   },
   "indexes": [
@@ -154,12 +148,40 @@
       "entity": "Namespace",
       "foreign_key": "namespaceId",
       "on_delete": "set_null"
+    },
+    "params": {
+      "type": "has-many",
+      "entity": "SnippetParam",
+      "foreign_key": "snippetId",
+      "cascade_delete": true,
+      "description": "Declared inputs of this snippet"
     }
   },
   "query": {
-    "allowed_operators": ["eq", "ne", "lt", "lte", "gt", "gte", "like", "ilike", "in", "notin", "isnull", "isnotnull"],
-    "allowed_group_by": ["language", "category", "userId", "namespaceId", "isTemplate"],
-    "allowed_includes": ["namespace"],
+    "allowed_operators": [
+      "eq",
+      "ne",
+      "lt",
+      "lte",
+      "gt",
+      "gte",
+      "like",
+      "ilike",
+      "in",
+      "notin",
+      "isnull",
+      "isnotnull"
+    ],
+    "allowed_group_by": [
+      "language",
+      "category",
+      "userId",
+      "namespaceId",
+      "isTemplate"
+    ],
+    "allowed_includes": [
+      "namespace"
+    ],
     "max_results": 500,
     "timeout_ms": 5000
   },

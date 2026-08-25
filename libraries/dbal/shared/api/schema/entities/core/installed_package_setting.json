@@ -1,7 +1,7 @@
 {
-  "entity": "WorkflowNodeParam",
+  "entity": "InstalledPackageSetting",
   "version": "1.0",
-  "description": "One parameter of one workflow step. A row per parameter, so a value can be read or changed without rewriting the workflow, and every step using a given setting is a query.",
+  "description": "One setting of an installed package. A row per setting, so a flag can be read or flipped without rewriting the package's whole configuration.",
   "fields": {
     "id": {
       "type": "string",
@@ -13,24 +13,14 @@
       "optional": true,
       "nullable": true
     },
-    "nodeId": {
+    "installedPackageId": {
       "type": "string",
       "required": true,
       "foreign_key": {
-        "entity": "WorkflowNode",
+        "entity": "InstalledPackage",
         "field": "id",
         "on_delete": "cascade"
       }
-    },
-    "workflowId": {
-      "type": "string",
-      "required": true,
-      "foreign_key": {
-        "entity": "Workflow",
-        "field": "id",
-        "on_delete": "cascade"
-      },
-      "description": "Denormalised from nodeId. The data layer filters one column at a time and cannot join, so without it reading a workflow costs a request per step."
     },
     "name": {
       "type": "string",
@@ -51,39 +41,27 @@
       ],
       "required": true,
       "default": "string"
-    },
-    "sortOrder": {
-      "type": "integer",
-      "required": true,
-      "default": 0,
-      "description": "Position within a repeated value. A list-valued property is several rows sharing a name, which is how a relational schema says \"many\"."
     }
   },
   "indexes": [
     {
       "fields": [
-        "workflowId"
+        "installedPackageId"
       ]
     },
     {
       "fields": [
-        "nodeId"
-      ]
-    },
-    {
-      "fields": [
-        "nodeId",
-        "name",
-        "sortOrder"
+        "installedPackageId",
+        "name"
       ],
       "unique": true
     }
   ],
   "relations": {
-    "node": {
+    "package": {
       "type": "belongs-to",
-      "entity": "WorkflowNode",
-      "foreign_key": "nodeId",
+      "entity": "InstalledPackage",
+      "foreign_key": "installedPackageId",
       "on_delete": "cascade"
     }
   },
