@@ -18,9 +18,10 @@
       "required": true,
       "foreign_key": {
         "entity": "InstalledPackage",
-        "field": "id",
+        "field": "packageId",
         "on_delete": "cascade"
-      }
+      },
+      "description": "FK to InstalledPackage.packageId, which is that table primary key -- its id column exists but is unused."
     },
     "name": {
       "type": "string",
