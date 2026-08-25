@@ -28,10 +28,10 @@
       "$ref": "./access/page_tree.json"
     },
     {
-      "$ref": "./access/component_node.json"
+      "$ref": "./access/page_tree_node.json"
     },
     {
-      "$ref": "./access/component_prop.json"
+      "$ref": "./access/page_tree_prop.json"
     },
     {
       "$ref": "./access/page_config.json"

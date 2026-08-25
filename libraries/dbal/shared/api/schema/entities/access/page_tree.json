@@ -3,26 +3,56 @@
   "version": "1.0",
   "description": "A named component tree. The tree itself is rows in ComponentNode, not a document on this row -- this is only its identity and label, so a tree can be referenced by several routes and renamed without touching its contents.",
   "fields": {
-    "id": { "type": "string", "primary": true, "generated": true },
-    "tenantId": { "type": "string", "optional": true, "nullable": true },
+    "id": {
+      "type": "string",
+      "primary": true,
+      "generated": true
+    },
+    "tenantId": {
+      "type": "string",
+      "optional": true,
+      "nullable": true
+    },
     "name": {
       "type": "string",
       "required": true,
       "max_length": 255,
       "description": "What the tree is called in the builder's picker"
     },
-    "description": { "type": "text", "optional": true, "nullable": true },
-    "createdAt": { "type": "bigint", "optional": true, "nullable": true },
-    "updatedAt": { "type": "bigint", "optional": true, "nullable": true }
+    "description": {
+      "type": "text",
+      "optional": true,
+      "nullable": true
+    },
+    "createdAt": {
+      "type": "bigint",
+      "optional": true,
+      "nullable": true
+    },
+    "updatedAt": {
+      "type": "bigint",
+      "optional": true,
+      "nullable": true
+    }
   },
   "indexes": [
-    { "fields": ["tenantId"] },
-    { "fields": ["tenantId", "name"], "unique": true }
+    {
+      "fields": [
+        "tenantId"
+      ]
+    },
+    {
+      "fields": [
+        "tenantId",
+        "name"
+      ],
+      "unique": true
+    }
   ],
   "relations": {
     "nodes": {
       "type": "has-many",
-      "entity": "ComponentNode",
+      "entity": "PageTreeNode",
       "foreign_key": "treeId",
       "cascade_delete": true,
       "description": "Every node in this tree"
@@ -35,9 +65,26 @@
     }
   },
   "acl": {
-    "create": { "role": ["god", "supergod"] },
-    "read": { "public": true },
-    "update": { "role": ["god", "supergod"] },
-    "delete": { "role": ["god", "supergod"] }
+    "create": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    },
+    "read": {
+      "public": true
+    },
+    "update": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    },
+    "delete": {
+      "role": [
+        "god",
+        "supergod"
+      ]
+    }
   }
 }
