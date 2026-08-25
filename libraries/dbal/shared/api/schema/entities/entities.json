@@ -10,6 +10,15 @@
       "$ref": "./core/workflow.json"
     },
     {
+      "$ref": "./core/workflow_node.json"
+    },
+    {
+      "$ref": "./core/workflow_node_param.json"
+    },
+    {
+      "$ref": "./core/workflow_edge.json"
+    },
+    {
       "$ref": "./core/package.json"
     },
     {

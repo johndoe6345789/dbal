@@ -1,0 +1,44 @@
+{
+  "entity": "WorkflowNode",
+  "version": "1.0",
+  "description": "One step in a workflow. Its parameters are rows in WorkflowNodeParam, and its connections are rows in WorkflowEdge, so a workflow is a query rather than two JSON documents.",
+  "fields": {
+    "id": { "type": "string", "primary": true, "generated": true },
+    "tenantId": { "type": "string", "optional": true, "nullable": true },
+    "workflowId": {
+      "type": "string",
+      "required": true,
+      "foreign_key": { "entity": "Workflow", "field": "id", "on_delete": "cascade" }
+    },
+    "nodeKey": {
+      "type": "string",
+      "required": true,
+      "max_length": 100,
+      "description": "Identifier used inside the workflow, e.g. node_trigger"
+    },
+    "name": { "type": "string", "required": true, "max_length": 255 },
+    "type": {
+      "type": "string",
+      "required": true,
+      "max_length": 100,
+      "description": "Step type, e.g. email.send"
+    },
+    "typeVersion": { "type": "integer", "optional": true, "default": 1 },
+    "positionX": { "type": "integer", "optional": true, "default": 0 },
+    "positionY": { "type": "integer", "optional": true, "default": 0 }
+  },
+  "indexes": [
+    { "fields": ["workflowId"] },
+    { "fields": ["workflowId", "nodeKey"], "unique": true }
+  ],
+  "relations": {
+    "workflow": { "type": "belongs-to", "entity": "Workflow", "foreign_key": "workflowId", "on_delete": "cascade" },
+    "params": { "type": "has-many", "entity": "WorkflowNodeParam", "foreign_key": "nodeId", "cascade_delete": true }
+  },
+  "acl": {
+    "create": { "role": ["god", "supergod"] },
+    "read": { "public": true },
+    "update": { "role": ["god", "supergod"] },
+    "delete": { "role": ["god", "supergod"] }
+  }
+}

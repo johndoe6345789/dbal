@@ -1,0 +1,39 @@
+{
+  "entity": "WorkflowEdge",
+  "version": "1.0",
+  "description": "A connection between two workflow steps. One row per connection replaces the nested adjacency map, so the graph can be walked, counted and checked for dangling ends in SQL.",
+  "fields": {
+    "id": { "type": "string", "primary": true, "generated": true },
+    "tenantId": { "type": "string", "optional": true, "nullable": true },
+    "workflowId": {
+      "type": "string",
+      "required": true,
+      "foreign_key": { "entity": "Workflow", "field": "id", "on_delete": "cascade" }
+    },
+    "sourceKey": { "type": "string", "required": true, "max_length": 100, "description": "nodeKey the connection leaves" },
+    "targetKey": { "type": "string", "required": true, "max_length": 100, "description": "nodeKey the connection enters" },
+    "handle": {
+      "type": "string",
+      "required": true,
+      "default": "main",
+      "max_length": 50,
+      "description": "Output group on the source, e.g. main"
+    },
+    "sourceIndex": { "type": "integer", "required": true, "default": 0, "description": "Which output of the source" },
+    "targetIndex": { "type": "integer", "required": true, "default": 0, "description": "Which input of the target" }
+  },
+  "indexes": [
+    { "fields": ["workflowId"] },
+    { "fields": ["workflowId", "sourceKey"] },
+    { "fields": ["workflowId", "targetKey"] }
+  ],
+  "relations": {
+    "workflow": { "type": "belongs-to", "entity": "Workflow", "foreign_key": "workflowId", "on_delete": "cascade" }
+  },
+  "acl": {
+    "create": { "role": ["god", "supergod"] },
+    "read": { "public": true },
+    "update": { "role": ["god", "supergod"] },
+    "delete": { "role": ["god", "supergod"] }
+  }
+}

@@ -29,26 +29,16 @@
       "optional": true,
       "nullable": true
     },
-    "nodes": {
-      "type": "text",
-      "description": "Serialized JSON array of workflow nodes (n8n node format)",
-      "required": true
-    },
-    "edges": {
-      "type": "text",
-      "description": "Serialized JSON adjacency map of node connections",
-      "required": true
-    },
     "enabled": {
       "type": "boolean",
-      "description": "DEPRECATED — superseded by 'status'. Nothing reads it: no seed record sets it, no UI renders it, and the workflow engine's 'enabled' flags belong to triggers/retry/rate-limit policies, not to the workflow itself. Kept as a nullable column so existing rows and any caller still sending it keep working; drop it once workflow.ops.json no longer lists it. Was required:true while every seed omitted it, which made the declaration unsatisfiable.",
+      "description": "DEPRECATED \u2014 superseded by 'status'. Nothing reads it: no seed record sets it, no UI renders it, and the workflow engine's 'enabled' flags belong to triggers/retry/rate-limit policies, not to the workflow itself. Kept as a nullable column so existing rows and any caller still sending it keep working; drop it once workflow.ops.json no longer lists it. Was required:true while every seed omitted it, which made the declaration unsatisfiable.",
       "optional": true,
       "nullable": true,
       "default": false
     },
     "status": {
       "type": "string",
-      "description": "Lifecycle state — the authoritative one. Canonical values are 'draft' | 'active' | 'paused' | 'archived' (the WorkflowStatus union the UI renders and filters on); left as a plain string rather than an enum because rows predating the field are absent and read as 'draft'. Indexed on (tenantId, status) and used by the workflows:{tenantId}:{status} cache key.",
+      "description": "Lifecycle state \u2014 the authoritative one. Canonical values are 'draft' | 'active' | 'paused' | 'archived' (the WorkflowStatus union the UI renders and filters on); left as a plain string rather than an enum because rows predating the field are absent and read as 'draft'. Indexed on (tenantId, status) and used by the workflows:{tenantId}:{status} cache key.",
       "optional": true,
       "nullable": true
     },
@@ -67,7 +57,7 @@
     },
     "isArchived": {
       "type": "boolean",
-      "description": "Soft-delete marker named by softDeleteField below. NOTE: softDelete/softDeleteField are declarative only — nothing in libraries/dbal/production/src reads either, so this column is never written today and DELETE is still a hard delete. It therefore does not currently conflict with status: 'archived', which is what the UI reads. Whoever implements soft delete must pick which of the two is authoritative and keep them in sync, rather than letting a row be isArchived=true while status says 'active'.",
+      "description": "Soft-delete marker named by softDeleteField below. NOTE: softDelete/softDeleteField are declarative only \u2014 nothing in libraries/dbal/production/src reads either, so this column is never written today and DELETE is still a hard delete. It therefore does not currently conflict with status: 'archived', which is what the UI reads. Whoever implements soft delete must pick which of the two is authoritative and keep them in sync, rather than letting a row be isArchived=true while status says 'active'.",
       "optional": true,
       "nullable": true,
       "default": false
@@ -99,18 +89,6 @@
     "updatedBy": {
       "type": "string",
       "description": "User ID of last editor. Target of the 'updater' relation's foreign_key and of the workflow.updated event payload.",
-      "optional": true,
-      "nullable": true
-    },
-    "executionConfig": {
-      "type": "json",
-      "description": "Execution tuning, e.g. { timeout, retryStrategy, maxRetries }",
-      "optional": true,
-      "nullable": true
-    },
-    "metadata": {
-      "type": "json",
-      "description": "Free-form annotations, e.g. { author, tags }",
       "optional": true,
       "nullable": true
     }
@@ -169,6 +147,20 @@
       "nullable": true,
       "on_delete": "set_null",
       "description": "User who last updated this workflow"
+    },
+    "nodes": {
+      "type": "has-many",
+      "entity": "WorkflowNode",
+      "foreign_key": "workflowId",
+      "cascade_delete": true,
+      "description": "Steps in this workflow"
+    },
+    "edges": {
+      "type": "has-many",
+      "entity": "WorkflowEdge",
+      "foreign_key": "workflowId",
+      "cascade_delete": true,
+      "description": "Connections between steps"
     }
   },
   "validations": [
