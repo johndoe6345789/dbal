@@ -1,0 +1,53 @@
+{
+  "entity": "ComponentProp",
+  "version": "1.0",
+  "description": "One property of one component node. A row per property rather than a blob, so props are queryable -- every node using a given href, say -- and a single value can be updated without rewriting the node.",
+  "fields": {
+    "id": { "type": "string", "primary": true, "generated": true },
+    "tenantId": { "type": "string", "optional": true, "nullable": true },
+    "nodeId": {
+      "type": "string",
+      "required": true,
+      "foreign_key": { "entity": "ComponentNode", "field": "id", "on_delete": "cascade" },
+      "description": "Node this property belongs to"
+    },
+    "name": {
+      "type": "string",
+      "required": true,
+      "max_length": 100,
+      "description": "Property name, e.g. text or href"
+    },
+    "value": {
+      "type": "text",
+      "optional": true,
+      "nullable": true,
+      "description": "Value rendered as text; valueType says how to read it back"
+    },
+    "valueType": {
+      "type": "enum",
+      "values": ["string", "number", "boolean"],
+      "required": true,
+      "default": "string",
+      "description": "How to parse value back into a prop"
+    }
+  },
+  "indexes": [
+    { "fields": ["nodeId"] },
+    { "fields": ["nodeId", "name"], "unique": true },
+    { "fields": ["name"] }
+  ],
+  "relations": {
+    "node": {
+      "type": "belongs-to",
+      "entity": "ComponentNode",
+      "foreign_key": "nodeId",
+      "on_delete": "cascade"
+    }
+  },
+  "acl": {
+    "create": { "role": ["god", "supergod"] },
+    "read": { "public": true },
+    "update": { "role": ["god", "supergod"] },
+    "delete": { "role": ["god", "supergod"] }
+  }
+}
