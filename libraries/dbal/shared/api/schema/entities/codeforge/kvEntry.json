@@ -10,9 +10,9 @@
       "description": "The KV key (e.g. 'project-files', 'project-models')"
     },
     "value": {
-      "type": "json",
+      "type": "text",
       "required": true,
-      "description": "Stored value (any JSON-serializable data)"
+      "description": "Stored value as text. Structure belongs in its own table, not in this cell."
     },
     "createdAt": {
       "type": "bigint",

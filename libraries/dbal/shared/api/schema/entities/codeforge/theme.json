@@ -16,19 +16,6 @@
       "max_length": 100,
       "description": "Theme display name"
     },
-    "colors": {
-      "type": "json",
-      "required": true,
-      "description": "Color tokens (primary, secondary, accent, background, foreground, muted, destructive, border)"
-    },
-    "typography": {
-      "type": "json",
-      "description": "Typography tokens (fontFamily, headingFamily, fontSize, fontWeight)"
-    },
-    "spacing": {
-      "type": "json",
-      "description": "Spacing tokens (unit, scale)"
-    },
     "updatedAt": {
       "type": "bigint",
       "generated": true
@@ -36,17 +23,31 @@
   },
   "indexes": [
     {
-      "fields": ["tenantId"]
+      "fields": [
+        "tenantId"
+      ]
     },
     {
-      "fields": ["name", "tenantId"],
+      "fields": [
+        "name",
+        "tenantId"
+      ],
       "unique": true
     }
   ],
   "acl": {
-    "create": { "user": true },
-    "read": { "self": true, "admin": true },
-    "update": { "self": true },
-    "delete": { "self": true }
+    "create": {
+      "user": true
+    },
+    "read": {
+      "self": true,
+      "admin": true
+    },
+    "update": {
+      "self": true
+    },
+    "delete": {
+      "self": true
+    }
   }
 }

@@ -93,11 +93,6 @@
         "default": false,
         "description": "Whether content is mature"
       },
-      "metadata": {
-        "type": "json",
-        "nullable": true,
-        "description": "Additional data (bitrate, resolution, etc.)"
-      },
       "createdAt": {
         "type": "bigint",
         "required": true,
@@ -223,20 +218,10 @@
         "default": false,
         "description": "Whether schedule repeats"
       },
-      "recurrence": {
-        "type": "json",
-        "nullable": true,
-        "description": "Recurrence rule (cron/rrule)"
-      },
       "notifyAt": {
         "type": "bigint",
         "nullable": true,
         "description": "Notification timestamp"
-      },
-      "metadata": {
-        "type": "json",
-        "nullable": true,
-        "description": "Additional data (guests, topics, etc.)"
       },
       "createdAt": {
         "type": "bigint",
@@ -302,21 +287,6 @@
         "required": true,
         "max_length": 100,
         "description": "Scene name"
-      },
-      "layout": {
-        "type": "json",
-        "required": true,
-        "description": "Scene layout composition"
-      },
-      "sources": {
-        "type": "json",
-        "required": true,
-        "description": "Media sources (cameras, screens, overlays)"
-      },
-      "transitions": {
-        "type": "json",
-        "nullable": true,
-        "description": "Scene transitions"
       },
       "isActive": {
         "type": "boolean",

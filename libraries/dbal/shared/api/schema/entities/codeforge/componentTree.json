@@ -35,21 +35,10 @@
       "default": "molecule",
       "description": "Atomic design category"
     },
-    "rootNode": {
-      "type": "json",
-      "required": true,
-      "description": "Root component node {id, type, name, props, children[]}"
-    },
     "description": {
       "type": "text",
       "optional": true,
       "nullable": true
-    },
-    "tags": {
-      "type": "json",
-      "optional": true,
-      "nullable": true,
-      "description": "Array of string tags for search/filter"
     },
     "createdAt": {
       "type": "bigint",

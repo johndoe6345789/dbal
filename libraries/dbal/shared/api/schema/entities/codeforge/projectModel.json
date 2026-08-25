@@ -21,11 +21,6 @@
       "max_length": 255,
       "description": "Model name (PascalCase, e.g. User)"
     },
-    "fields": {
-      "type": "json",
-      "required": true,
-      "description": "Array of field definitions [{id, name, type, isRequired, isUnique, isArray, defaultValue, relation}]"
-    },
     "createdAt": {
       "type": "bigint",
       "generated": true

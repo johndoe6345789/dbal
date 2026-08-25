@@ -187,11 +187,6 @@
         "default": false,
         "description": "Whether message was a command"
       },
-      "metadata": {
-        "type": "json",
-        "nullable": true,
-        "description": "Additional data (mentions, links, etc.)"
-      },
       "createdAt": {
         "type": "bigint",
         "required": true,
@@ -306,11 +301,6 @@
         "type": "string",
         "nullable": true,
         "description": "Reason for kick"
-      },
-      "metadata": {
-        "type": "json",
-        "nullable": true,
-        "description": "User preferences in channel"
       }
     },
     "indexes": [

@@ -41,21 +41,6 @@
       "required": true,
       "description": "Sender email address"
     },
-    "to": {
-      "type": "json",
-      "required": true,
-      "description": "Recipient addresses (JSON array of strings)"
-    },
-    "cc": {
-      "type": "json",
-      "nullable": true,
-      "description": "CC recipients (JSON array)"
-    },
-    "bcc": {
-      "type": "json",
-      "nullable": true,
-      "description": "BCC recipients (JSON array)"
-    },
     "replyTo": {
       "type": "string",
       "nullable": true,
@@ -75,11 +60,6 @@
       "type": "text",
       "nullable": true,
       "description": "HTML version (sanitized)"
-    },
-    "headers": {
-      "type": "json",
-      "nullable": true,
-      "description": "All headers as JSON object"
     },
     "receivedAt": {
       "type": "bigint",
@@ -129,11 +109,6 @@
       "nullable": true,
       "index": true,
       "description": "FK to conversation thread (for grouping)"
-    },
-    "labels": {
-      "type": "json",
-      "nullable": true,
-      "description": "Custom labels (JSON array)"
     },
     "size": {
       "type": "bigint",

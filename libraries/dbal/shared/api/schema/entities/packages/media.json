@@ -69,11 +69,6 @@
         "nullable": true,
         "description": "Audio/video duration in seconds"
       },
-      "metadata": {
-        "type": "json",
-        "nullable": true,
-        "description": "Additional metadata (EXIF, tags, etc.)"
-      },
       "createdAt": {
         "type": "bigint",
         "required": true,
@@ -189,11 +184,6 @@
         "type": "string",
         "nullable": true,
         "description": "Output file path"
-      },
-      "params": {
-        "type": "json",
-        "required": true,
-        "description": "Job-specific parameters"
       },
       "progress": {
         "type": "integer",
