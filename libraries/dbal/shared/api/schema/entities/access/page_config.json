@@ -47,12 +47,6 @@
       "optional": true,
       "nullable": true
     },
-    "componentTree": {
-      "type": "text",
-      "optional": true,
-      "nullable": true,
-      "description": "Page layout configuration \u2014 a JSON-stringified component tree, routinely well over 255 characters, hence text rather than string. Mutually exclusive with `component` in practice: a system package (see packages/ repo) sets `component` to a registered React component name and leaves this null; a user package built through the God Panel composer sets this and leaves `component` null. WorkspacePageSlot tries `component` first, falls back to this."
-    },
     "pageTreeId": {
       "type": "string",
       "optional": true,
@@ -62,7 +56,7 @@
         "field": "id",
         "on_delete": "set_null"
       },
-      "description": "The PageTree this route renders. Preferred over the inline componentTree blob, which is kept for rows seeded before trees became their own entity."
+      "description": "The PageTree this route renders. The tree itself is rows in PageTreeNode and PageTreeProp."
     },
     "level": {
       "type": "integer",
