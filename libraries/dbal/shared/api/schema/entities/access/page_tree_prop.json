@@ -23,6 +23,16 @@
       },
       "description": "Node this property belongs to"
     },
+    "treeId": {
+      "type": "string",
+      "required": true,
+      "foreign_key": {
+        "entity": "PageTree",
+        "field": "id",
+        "on_delete": "cascade"
+      },
+      "description": "The tree this property belongs to, denormalised from nodeId. The data layer filters on single columns and cannot join, so without it reading one tree costs a request per node."
+    },
     "name": {
       "type": "string",
       "required": true,
@@ -48,6 +58,11 @@
     }
   },
   "indexes": [
+    {
+      "fields": [
+        "treeId"
+      ]
+    },
     {
       "fields": [
         "nodeId"
