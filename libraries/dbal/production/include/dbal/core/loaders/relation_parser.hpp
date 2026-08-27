@@ -21,6 +21,8 @@ public:
 private:
     std::vector<std::string> parseIndexFields(const nlohmann::json& indexNode);
     std::map<std::string, bool> parseACLOperation(const nlohmann::json& operationNode);
+    /// Roles named by one acl.<op> block. Accepts a single role or a list.
+    static std::vector<std::string> parseACLRoles(const nlohmann::json& operationNode);
 };
 
 }  // namespace loaders

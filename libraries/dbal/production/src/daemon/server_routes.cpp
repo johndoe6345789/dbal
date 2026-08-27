@@ -80,6 +80,73 @@ namespace {
         }
     }
 
+
+    // Is this method a write? Role ACLs are enforced on writes only.
+    //
+    // Reads are deliberately exempt: published pages are meant to be readable
+    // by anyone, and InstalledPackage declares read as god-only while the app
+    // reads it on every page load -- enforcing that would break the product to
+    // no security benefit, since the data is what the page already shows.
+    bool is_write_method(drogon::HttpMethod method) {
+        return method == drogon::HttpMethod::Post ||
+               method == drogon::HttpMethod::Put ||
+               method == drogon::HttpMethod::Patch ||
+               method == drogon::HttpMethod::Delete;
+    }
+
+
+    /**
+     * @brief Refuse a write the schema's role ACL does not permit.
+     *
+     * Returns a response to send, or nullptr to continue. Enforced for writes
+     * only, and only where a schema names roles -- an entity with no rule
+     * keeps working, the same fail-open default as the system flag.
+     *
+     * Twenty entities declare which roles may write them. Until this ran,
+     * none of it was enforced: an unauthenticated POST created a StyleRule
+     * that says create is god-only, and a DELETE for a missing row answered
+     * 404 rather than 403 on every entity, including User.
+     */
+    template <typename OidcServiceOpt>
+    drogon::HttpResponsePtr role_acl_rejection(
+        const drogon::HttpRequestPtr& req,
+        const dbal::core::SchemaAclRegistry* registry,
+        const std::string& entity,
+        const std::string& jwt_secret,
+        const OidcServiceOpt& oidc_service) {
+        if (!registry || !is_write_method(req->method())) return nullptr;
+        const char* op = acl_operation_for_method(req->method());
+        if (registry->requiredRoles(entity, op).empty()) return nullptr;
+
+        // The admin token is the operator's own key, not a user role.
+        if (const char* tok = std::getenv("DBAL_ADMIN_TOKEN"); tok && std::strlen(tok) > 0) {
+            if (dbal::security::timing_safe_equal(req->getHeader("Authorization"),
+                                                  std::string("Bearer ") + tok)) {
+                return nullptr;
+            }
+        }
+
+        std::string pub = oidc_service ? oidc_service->keypair().publicKeyPem() : std::string();
+        std::string iss = oidc_service ? oidc_service->issuer() : std::string();
+        auto claims = dbal::security::MultiAlgJwtValidator::fromRequest(req, jwt_secret, pub, iss);
+
+        ::Json::Value body;
+        body["success"] = false;
+        if (!claims) {
+            body["error"] = "Authentication required to modify this entity";
+            auto r = drogon::HttpResponse::newHttpJsonResponse(body);
+            r->setStatusCode(drogon::k401Unauthorized);
+            return r;
+        }
+        if (!registry->roleAllowed(entity, op, claims->role)) {
+            body["error"] = "Your role may not modify this entity";
+            auto r = drogon::HttpResponse::newHttpJsonResponse(body);
+            r->setStatusCode(drogon::k403Forbidden);
+            return r;
+        }
+        return nullptr;
+    }
+
     struct RateLimitEntry {
         int count = 0;
         std::chrono::steady_clock::time_point window_start = std::chrono::steady_clock::now();
@@ -1057,6 +1124,11 @@ void Server::registerRoutes() {
                 resp->setStatusCode(drogon::k403Forbidden);
                 cb(resp); return;
             }
+            if (auto reject = role_acl_rejection(
+                    req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
+                    entity, jwt_secret_, oidc_service_)) {
+                cb(reject); return;
+            }
             // JWT auth + ownership context
             std::optional<handlers::AuthContext> auth_ctx;
             auto entity_cfg = auth_config_.getEntityConfig(tenant, entity);
@@ -1156,6 +1228,11 @@ void Server::registerRoutes() {
                 auto resp = drogon::HttpResponse::newHttpJsonResponse(body);
                 resp->setStatusCode(drogon::k403Forbidden);
                 cb(resp); return;
+            }
+            if (auto reject = role_acl_rejection(
+                    req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
+                    entity, jwt_secret_, oidc_service_)) {
+                cb(reject); return;
             }
             std::optional<handlers::AuthContext> auth_ctx;
             auto entity_cfg = auth_config_.getEntityConfig(tenant, entity);
@@ -1257,6 +1334,11 @@ void Server::registerRoutes() {
                 auto resp = drogon::HttpResponse::newHttpJsonResponse(body);
                 resp->setStatusCode(drogon::k403Forbidden);
                 cb(resp); return;
+            }
+            if (auto reject = role_acl_rejection(
+                    req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
+                    entity, jwt_secret_, oidc_service_)) {
+                cb(reject); return;
             }
             // Actions inherit the entity's require_auth but not ownership semantics
             auto entity_cfg = auth_config_.getEntityConfig(tenant, entity);

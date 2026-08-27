@@ -14,6 +14,7 @@
 #include "dbal/core/entity_loader.hpp"
 #include <map>
 #include <string>
+#include <vector>
 
 namespace dbal::core {
 
@@ -35,6 +36,20 @@ public:
      * matching how Credential.json/Session.json already declare it.
      */
     bool isSystemOnly(const std::string& entity, const std::string& method) const;
+
+    /**
+     * @brief Roles allowed to perform @p method on @p entity, or empty.
+     *
+     * Empty means the schema names no roles for that operation, which is not
+     * a restriction -- callers must treat it as "allowed", the same fail-open
+     * default isSystemOnly() uses. Twenty entities declare write roles.
+     */
+    std::vector<std::string> requiredRoles(const std::string& entity,
+                                           const std::string& method) const;
+
+    /** @brief True if @p role is in requiredRoles(), or nothing is required. */
+    bool roleAllowed(const std::string& entity, const std::string& method,
+                     const std::string& role) const;
 
 private:
     std::map<std::string, EntitySchema> schemas_;

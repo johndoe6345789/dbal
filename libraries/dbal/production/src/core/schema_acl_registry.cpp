@@ -3,6 +3,7 @@
  */
 #include "schema_acl_registry.hpp"
 #include <spdlog/spdlog.h>
+#include <algorithm>
 
 namespace dbal::core {
 
@@ -32,6 +33,25 @@ bool SchemaAclRegistry::isSystemOnly(const std::string& entity, const std::strin
 
     auto sysIt = opMap->find("system");
     return sysIt != opMap->end() && sysIt->second;
+}
+
+std::vector<std::string> SchemaAclRegistry::requiredRoles(
+    const std::string& entity, const std::string& method) const {
+    auto it = schemas_.find(entity);
+    if (it == schemas_.end() || !it->second.acl.has_value()) return {};
+    const auto& roles = it->second.acl->roles;
+    auto roleIt = roles.find(method);
+    if (roleIt == roles.end()) return {};
+    return roleIt->second;
+}
+
+bool SchemaAclRegistry::roleAllowed(const std::string& entity, const std::string& method,
+                                    const std::string& role) const {
+    const auto allowed = requiredRoles(entity, method);
+    // Nothing declared is not a restriction -- same fail-open default as
+    // isSystemOnly, so an entity nobody has written rules for keeps working.
+    if (allowed.empty()) return true;
+    return std::find(allowed.begin(), allowed.end(), role) != allowed.end();
 }
 
 } // namespace dbal::core

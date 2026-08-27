@@ -50,6 +50,16 @@ struct EntitySchema {
         std::map<std::string, bool> read;
         std::map<std::string, bool> update;
         std::map<std::string, bool> del;
+        /**
+         * Roles permitted per operation, keyed "create"/"read"/"update"/"delete".
+         *
+         * Separate from the boolean maps above because a role list is not a
+         * predicate: schemas write "role": ["god","supergod"] or "role": "user",
+         * and map<string,bool> could hold neither, so parseACLOperation used to
+         * drop them on the floor. An absent or empty entry means the operation
+         * names no roles and is not restricted by role.
+         */
+        std::map<std::string, std::vector<std::string>> roles;
     };
     std::optional<ACL> acl;
 };

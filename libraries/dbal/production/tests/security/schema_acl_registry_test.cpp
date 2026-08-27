@@ -3,6 +3,12 @@
  * @brief Phase 2 gate: schema.acl.system enforcement must apply to entities
  *        that declare it (Credential) and must NOT affect entities that
  *        don't (regression check against Session and an ordinary entity).
+ *
+ *        Also covers schema.acl.<op>.role, which twenty entities declare and
+ *        nothing read until it was enforced: the role list could not be held
+ *        by the map<string,bool> the parser produced, so it was dropped, and
+ *        an unauthenticated POST created a StyleRule that says create is
+ *        god-only.
  */
 
 #include <gtest/gtest.h>
@@ -165,4 +171,75 @@ TEST(SchemaAclRegistry, ImplicitTenantIdFieldDoesNotDropTheSchema) {
 
     SchemaAclRegistry registry(dir.path());
     EXPECT_TRUE(registry.isSystemOnly("Notification", "create"));
+}
+
+
+// ── role ACLs ───────────────────────────────────────────────────────────────
+
+TEST(SchemaAclRegistry, RolesAreReadFromAList) {
+    TempSchemaDir dir;
+    dir.writeSchema("StyleRule.json", R"({
+        "entity": "StyleRule",
+        "fields": { "id": { "type": "string", "primary": true } },
+        "acl": {
+            "create": { "role": ["god", "supergod"] },
+            "read":   { "public": true },
+            "delete": { "role": ["god", "supergod"] }
+        }
+    })");
+    SchemaAclRegistry registry(dir.path());
+
+    EXPECT_EQ(registry.requiredRoles("StyleRule", "create"),
+              (std::vector<std::string>{"god", "supergod"}));
+    EXPECT_TRUE(registry.roleAllowed("StyleRule", "create", "god"));
+    EXPECT_FALSE(registry.roleAllowed("StyleRule", "create", "user"));
+    // No token means no role, which must not pass a restricted operation.
+    EXPECT_FALSE(registry.roleAllowed("StyleRule", "create", ""));
+}
+
+TEST(SchemaAclRegistry, RolesAreReadFromASingleString) {
+    TempSchemaDir dir;
+    dir.writeSchema("Note.json", R"({
+        "entity": "Note",
+        "fields": { "id": { "type": "string", "primary": true } },
+        "acl": { "update": { "role": "user" } }
+    })");
+    SchemaAclRegistry registry(dir.path());
+    EXPECT_TRUE(registry.roleAllowed("Note", "update", "user"));
+    EXPECT_FALSE(registry.roleAllowed("Note", "update", "guest"));
+}
+
+TEST(SchemaAclRegistry, OperationWithNoRolesIsUnrestricted) {
+    TempSchemaDir dir;
+    dir.writeSchema("Note.json", R"({
+        "entity": "Note",
+        "fields": { "id": { "type": "string", "primary": true } },
+        "acl": { "read": { "public": true } }
+    })");
+    SchemaAclRegistry registry(dir.path());
+    // Fails open, exactly as isSystemOnly does: an entity nobody wrote a rule
+    // for keeps working rather than becoming unreachable.
+    EXPECT_TRUE(registry.requiredRoles("Note", "create").empty());
+    EXPECT_TRUE(registry.roleAllowed("Note", "create", ""));
+}
+
+TEST(SchemaAclRegistry, UnknownEntityIsUnrestricted) {
+    TempSchemaDir dir;
+    SchemaAclRegistry registry(dir.path());
+    EXPECT_TRUE(registry.roleAllowed("NoSuchEntity", "create", ""));
+}
+
+TEST(SchemaAclRegistry, RolesDoNotDisturbBooleanPredicates) {
+    TempSchemaDir dir;
+    dir.writeSchema("Mixed.json", R"({
+        "entity": "Mixed",
+        "fields": { "id": { "type": "string", "primary": true } },
+        "acl": { "delete": { "role": ["god"], "system": true } }
+    })");
+    SchemaAclRegistry registry(dir.path());
+    // One unmodelled value used to throw and discard the whole schema file,
+    // silently unenforcing every system-only entity in it.
+    EXPECT_TRUE(registry.isSystemOnly("Mixed", "delete"));
+    EXPECT_EQ(registry.requiredRoles("Mixed", "delete"),
+              (std::vector<std::string>{"god"}));
 }

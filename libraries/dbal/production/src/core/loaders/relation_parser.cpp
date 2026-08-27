@@ -20,7 +20,30 @@ EntitySchema::ACL RelationParser::parseACL(const nlohmann::json& aclNode) {
     if (aclNode.contains("read"))   acl.read   = parseACLOperation(aclNode["read"]);
     if (aclNode.contains("update")) acl.update = parseACLOperation(aclNode["update"]);
     if (aclNode.contains("delete")) acl.del    = parseACLOperation(aclNode["delete"]);
+
+    // Role lists, kept alongside the boolean predicates rather than discarded.
+    // Twenty entities declare which roles may write them -- StyleRule says
+    // create is god-only -- and until this was read, nothing enforced any of
+    // it: an unauthenticated POST created one.
+    for (const auto& op : {"create", "read", "update", "delete"}) {
+        if (!aclNode.contains(op)) continue;
+        auto roles = parseACLRoles(aclNode[op]);
+        if (!roles.empty()) acl.roles[op] = std::move(roles);
+    }
     return acl;
+}
+
+std::vector<std::string> RelationParser::parseACLRoles(const nlohmann::json& operationNode) {
+    std::vector<std::string> roles;
+    if (!operationNode.is_object() || !operationNode.contains("role")) return roles;
+    const auto& role = operationNode["role"];
+    if (role.is_string()) {
+        roles.push_back(role.get<std::string>());
+    } else if (role.is_array()) {
+        for (const auto& r : role)
+            if (r.is_string()) roles.push_back(r.get<std::string>());
+    }
+    return roles;
 }
 
 std::vector<std::string> RelationParser::parseIndexFields(const nlohmann::json& indexNode) {
