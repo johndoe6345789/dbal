@@ -94,6 +94,32 @@ def generate_typescript_types(entities: Dict[str, Any], output_file: Path):
     print(f"✓ Generated TypeScript types: {output_file}")
 
 
+# Field names that are legal in JSON and SQL but not as C++ member names.
+# WorkflowNodeCondition.operator produced `std::string operator;`, which does
+# not compile -- and because this header is built into the daemon, one such
+# field broke the image build for every commit until it was noticed.
+CPP_KEYWORDS = {
+    'alignas', 'alignof', 'and', 'asm', 'auto', 'bitand', 'bitor', 'bool',
+    'break', 'case', 'catch', 'char', 'class', 'compl', 'concept', 'const',
+    'consteval', 'constexpr', 'constinit', 'continue', 'co_await',
+    'co_return', 'co_yield', 'decltype', 'default', 'delete', 'do', 'double',
+    'dynamic_cast', 'else', 'enum', 'explicit', 'export', 'extern', 'false',
+    'float', 'for', 'friend', 'goto', 'if', 'inline', 'int', 'long', 'mutable',
+    'namespace', 'new', 'noexcept', 'not', 'nullptr', 'operator', 'or',
+    'private', 'protected', 'public', 'register', 'reinterpret_cast',
+    'requires', 'return', 'short', 'signed', 'sizeof', 'static',
+    'static_assert', 'static_cast', 'struct', 'switch', 'template', 'this',
+    'thread_local', 'throw', 'true', 'try', 'typedef', 'typeid', 'typename',
+    'union', 'unsigned', 'using', 'virtual', 'void', 'volatile', 'wchar_t',
+    'while', 'xor',
+}
+
+
+def cpp_member_name(field_name: str) -> str:
+    """A C++-safe member name. Trailing underscore is the conventional escape."""
+    return f"{field_name}_" if field_name in CPP_KEYWORDS else field_name
+
+
 def generate_cpp_struct(entity_name: str, entity_data: Dict[str, Any]) -> str:
     """Generate C++ struct from entity schema"""
     lines = [f"struct {entity_name} {{"]
@@ -106,7 +132,12 @@ def generate_cpp_struct(entity_name: str, entity_data: Dict[str, Any]) -> str:
         if field_data.get('optional', False) or field_data.get('nullable', False):
             field_type = f"std::optional<{field_type}>"
 
-        lines.append(f"    {field_type} {field_name};")
+        member = cpp_member_name(field_name)
+        if member != field_name:
+            # The wire name stays as the schema wrote it; only the C++ member
+            # is renamed, so anything mapping by JSON key is unaffected.
+            lines.append(f"    // schema field: {field_name}")
+        lines.append(f"    {field_type} {member};")
 
     lines.append("};")
     return '\n'.join(lines)
