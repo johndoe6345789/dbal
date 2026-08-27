@@ -47,6 +47,18 @@ public:
     std::vector<std::string> requiredRoles(const std::string& entity,
                                            const std::string& method) const;
 
+    /**
+     * @brief True if @p method on @p entity is declared publicly writable.
+     *
+     * Only an explicit acl.<op>.public == true opts an operation out of
+     * requiring a caller. User.create is the one that does, so signing up
+     * works without already being signed in.
+     */
+    bool isPublicWrite(const std::string& entity, const std::string& method) const;
+
+    /** @brief Fields an unauthenticated caller may not set. */
+    std::vector<std::string> privilegedFields(const std::string& entity) const;
+
     /** @brief True if @p role is in requiredRoles(), or nothing is required. */
     bool roleAllowed(const std::string& entity, const std::string& method,
                      const std::string& role) const;

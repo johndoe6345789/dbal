@@ -35,6 +35,26 @@ bool SchemaAclRegistry::isSystemOnly(const std::string& entity, const std::strin
     return sysIt != opMap->end() && sysIt->second;
 }
 
+bool SchemaAclRegistry::isPublicWrite(const std::string& entity,
+                                      const std::string& method) const {
+    auto it = schemas_.find(entity);
+    if (it == schemas_.end() || !it->second.acl.has_value()) return false;
+    const auto* opMap = operationMap(*it->second.acl, method);
+    if (!opMap) return false;
+    auto pub = opMap->find("public");
+    return pub != opMap->end() && pub->second;
+}
+
+std::vector<std::string> SchemaAclRegistry::privilegedFields(
+    const std::string& entity) const {
+    std::vector<std::string> names;
+    auto it = schemas_.find(entity);
+    if (it == schemas_.end()) return names;
+    for (const auto& field : it->second.fields)
+        if (field.privileged) names.push_back(field.name);
+    return names;
+}
+
 std::vector<std::string> SchemaAclRegistry::requiredRoles(
     const std::string& entity, const std::string& method) const {
     auto it = schemas_.find(entity);

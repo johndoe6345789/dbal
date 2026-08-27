@@ -37,7 +37,8 @@
         "supergod"
       ],
       "default": "user",
-      "description": "User role defining access level"
+      "description": "User role defining access level. Privileged: creating a user is public so signing up works, so this may only be set by an authenticated caller.",
+      "privileged": true
     },
     "profilePicture": {
       "type": "string",
@@ -66,7 +67,8 @@
       "type": "boolean",
       "optional": true,
       "nullable": true,
-      "default": false
+      "default": false,
+      "privileged": true
     },
     "passwordChangeTimestamp": {
       "type": "bigint",

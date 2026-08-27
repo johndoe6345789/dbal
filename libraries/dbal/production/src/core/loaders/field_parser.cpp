@@ -44,6 +44,7 @@ void FieldParser::parseFlags(const nlohmann::json& fieldNode, EntityField& field
     field.nullable  = fieldNode.value("nullable",  false);
     field.index     = fieldNode.value("index",     false);
     field.sensitive = fieldNode.value("sensitive", false);
+    field.privileged = fieldNode.value("privileged", false);
 }
 
 void FieldParser::parseOptionalProperties(const nlohmann::json& fieldNode, EntityField& field) {

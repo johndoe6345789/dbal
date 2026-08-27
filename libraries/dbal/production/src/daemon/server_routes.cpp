@@ -96,19 +96,26 @@ namespace {
 
 
     /**
-     * @brief Refuse a write the schema's role ACL does not permit.
+     * @brief Refuse a write the caller is not entitled to make.
      *
-     * Returns a response to send, or nullptr to continue. Enforced for writes
-     * only, and only where a schema names roles -- an entity with no rule
-     * keeps working, the same fail-open default as the system flag.
+     * Returns a response to send, or nullptr to continue. Three rules, in
+     * order:
      *
-     * Twenty entities declare which roles may write them. Until this ran,
-     * none of it was enforced: an unauthenticated POST created a StyleRule
-     * that says create is god-only, and a DELETE for a missing row answered
-     * 404 rather than 403 on every entity, including User.
+     *  1. An operation the schema marks public (acl.<op>.public) is open.
+     *     User.create is the one that is, so signing up works without already
+     *     being signed in.
+     *  2. Every other write needs a caller. This is default-deny, unlike the
+     *     read path: twenty-five entities declare no write rule at all, and
+     *     leaving those open is what let an unauthenticated POST create a
+     *     StyleRule, and let anyone update any User -- role included, since
+     *     update declares "self"/"admin" predicates that nothing enforces.
+     *  3. Where the schema names roles, the caller's role must be among them.
+     *
+     * A public create still may not set a privileged field, or open signup
+     * would be a way to mint a god.
      */
     template <typename OidcServiceOpt>
-    drogon::HttpResponsePtr role_acl_rejection(
+    drogon::HttpResponsePtr write_authz_rejection(
         const drogon::HttpRequestPtr& req,
         const dbal::core::SchemaAclRegistry* registry,
         const std::string& entity,
@@ -116,7 +123,6 @@ namespace {
         const OidcServiceOpt& oidc_service) {
         if (!registry || !is_write_method(req->method())) return nullptr;
         const char* op = acl_operation_for_method(req->method());
-        if (registry->requiredRoles(entity, op).empty()) return nullptr;
 
         // The admin token is the operator's own key, not a user role.
         if (const char* tok = std::getenv("DBAL_ADMIN_TOKEN"); tok && std::strlen(tok) > 0) {
@@ -132,6 +138,27 @@ namespace {
 
         ::Json::Value body;
         body["success"] = false;
+
+        if (registry->isPublicWrite(entity, op)) {
+            if (claims) return nullptr;
+            // Anonymous, and allowed to be -- but not to hand itself a role.
+            const auto privileged = registry->privilegedFields(entity);
+            if (!privileged.empty()) {
+                auto payload = req->getJsonObject();
+                if (payload) {
+                    for (const auto& name : privileged) {
+                        if (payload->isMember(name)) {
+                            body["error"] = "Field '" + name + "' may not be set without signing in";
+                            auto r = drogon::HttpResponse::newHttpJsonResponse(body);
+                            r->setStatusCode(drogon::k403Forbidden);
+                            return r;
+                        }
+                    }
+                }
+            }
+            return nullptr;
+        }
+
         if (!claims) {
             body["error"] = "Authentication required to modify this entity";
             auto r = drogon::HttpResponse::newHttpJsonResponse(body);
@@ -1124,7 +1151,7 @@ void Server::registerRoutes() {
                 resp->setStatusCode(drogon::k403Forbidden);
                 cb(resp); return;
             }
-            if (auto reject = role_acl_rejection(
+            if (auto reject = write_authz_rejection(
                     req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
                     entity, jwt_secret_, oidc_service_)) {
                 cb(reject); return;
@@ -1229,7 +1256,7 @@ void Server::registerRoutes() {
                 resp->setStatusCode(drogon::k403Forbidden);
                 cb(resp); return;
             }
-            if (auto reject = role_acl_rejection(
+            if (auto reject = write_authz_rejection(
                     req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
                     entity, jwt_secret_, oidc_service_)) {
                 cb(reject); return;
@@ -1335,7 +1362,7 @@ void Server::registerRoutes() {
                 resp->setStatusCode(drogon::k403Forbidden);
                 cb(resp); return;
             }
-            if (auto reject = role_acl_rejection(
+            if (auto reject = write_authz_rejection(
                     req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
                     entity, jwt_secret_, oidc_service_)) {
                 cb(reject); return;

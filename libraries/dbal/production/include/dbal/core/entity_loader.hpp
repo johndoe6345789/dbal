@@ -20,6 +20,10 @@ struct EntityField {
     bool nullable = false;
     bool index = false;
     bool sensitive = false;
+    /// Only an authenticated caller may set this. User.role is the reason:
+    /// creating a user is public so that signing up works, which without this
+    /// let anyone POST themselves a row with role "god".
+    bool privileged = false;
     std::optional<std::string> defaultValue;
     std::optional<std::string> references;
     std::optional<int> minLength;

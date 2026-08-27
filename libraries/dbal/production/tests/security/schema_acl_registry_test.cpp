@@ -243,3 +243,67 @@ TEST(SchemaAclRegistry, RolesDoNotDisturbBooleanPredicates) {
     EXPECT_EQ(registry.requiredRoles("Mixed", "delete"),
               (std::vector<std::string>{"god"}));
 }
+
+
+// -- default-deny writes, and privileged fields ----------------------------
+
+TEST(SchemaAclRegistry, PublicWriteIsRecognised) {
+    TempSchemaDir dir;
+    dir.writeSchema("User.json", R"({
+        "entity": "User",
+        "fields": {
+            "id":   { "type": "string", "primary": true },
+            "role": { "type": "string", "privileged": true }
+        },
+        "acl": { "create": { "public": true }, "update": { "self": true } }
+    })");
+    SchemaAclRegistry registry(dir.path());
+
+    // Signing up must work without already being signed in.
+    EXPECT_TRUE(registry.isPublicWrite("User", "create"));
+    // "self" is a predicate nothing enforces; it must not read as public, or
+    // anyone could update any user -- role included.
+    EXPECT_FALSE(registry.isPublicWrite("User", "update"));
+    EXPECT_FALSE(registry.isPublicWrite("User", "delete"));
+}
+
+TEST(SchemaAclRegistry, PrivilegedFieldsAreListed) {
+    TempSchemaDir dir;
+    dir.writeSchema("User.json", R"({
+        "entity": "User",
+        "fields": {
+            "id":       { "type": "string", "primary": true },
+            "username": { "type": "string" },
+            "role":     { "type": "string", "privileged": true }
+        },
+        "acl": { "create": { "public": true } }
+    })");
+    SchemaAclRegistry registry(dir.path());
+    EXPECT_EQ(registry.privilegedFields("User"),
+              (std::vector<std::string>{"role"}));
+}
+
+TEST(SchemaAclRegistry, NoPrivilegedFieldsByDefault) {
+    TempSchemaDir dir;
+    dir.writeSchema("Note.json", R"({
+        "entity": "Note",
+        "fields": { "id": { "type": "string", "primary": true } },
+        "acl": { "create": { "public": true } }
+    })");
+    SchemaAclRegistry registry(dir.path());
+    EXPECT_TRUE(registry.privilegedFields("Note").empty());
+}
+
+TEST(SchemaAclRegistry, EntityWithNoWriteRuleIsNotPublic) {
+    TempSchemaDir dir;
+    dir.writeSchema("Snippet.json", R"({
+        "entity": "Snippet",
+        "fields": { "id": { "type": "string", "primary": true } },
+        "acl": { "read": { "public": true } }
+    })");
+    SchemaAclRegistry registry(dir.path());
+    // Twenty-five shipped entities look like this. A readable entity is not a
+    // writable one, and the write path must default to requiring a caller.
+    EXPECT_FALSE(registry.isPublicWrite("Snippet", "create"));
+    EXPECT_TRUE(registry.isPublicWrite("Snippet", "read"));
+}
