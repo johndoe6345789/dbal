@@ -59,7 +59,6 @@ inline Result<PageConfig> update(InMemoryStore& store, const std::string& id, co
         }
         page.level = input.level.value();
     }
-    if (input.componentTree.has_value()) page.componentTree = input.componentTree.value();
     if (input.requiresAuth.has_value()) page.requiresAuth = input.requiresAuth.value();
     if (input.requiredRole.has_value()) page.requiredRole = input.requiredRole.value();
     if (input.parentPath.has_value()) page.parentPath = input.parentPath.value();

@@ -30,8 +30,6 @@ inline Result<Workflow> create(InMemoryStore& store, const CreateWorkflowInput& 
     workflow.tenantId = input.tenantId;
     workflow.name = input.name;
     workflow.description = input.description;
-    workflow.nodes = input.nodes;
-    workflow.edges = input.edges;
     workflow.enabled = input.enabled;
     workflow.version = input.version;
     workflow.createdAt = input.createdAt.value_or(std::chrono::system_clock::now());

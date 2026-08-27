@@ -47,14 +47,6 @@ inline Result<Workflow> update(InMemoryStore& store, const std::string& id, cons
         workflow.description = input.description.value();
     }
 
-    if (input.nodes.has_value()) {
-        workflow.nodes = input.nodes.value();
-    }
-
-    if (input.edges.has_value()) {
-        workflow.edges = input.edges.value();
-    }
-
     if (input.enabled.has_value()) {
         workflow.enabled = input.enabled.value();
     }

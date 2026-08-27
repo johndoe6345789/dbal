@@ -41,7 +41,6 @@ inline Result<PageConfig> create(InMemoryStore& store, const CreatePageInput& in
     page.description = input.description;
     page.icon = input.icon;
     page.component = input.component;
-    page.componentTree = input.componentTree;
     page.level = input.level;
     page.requiresAuth = input.requiresAuth;
     page.requiredRole = input.requiredRole;

@@ -35,7 +35,6 @@ inline Result<InstalledPackage> create(InMemoryStore& store, const CreatePackage
     pkg.installedAt = input.installedAt.value_or(std::chrono::system_clock::now());
     pkg.version = input.version;
     pkg.enabled = input.enabled;
-    pkg.config = input.config;
 
     store.packages[pkg.packageId] = pkg;
     store.package_keys[key] = pkg.packageId;

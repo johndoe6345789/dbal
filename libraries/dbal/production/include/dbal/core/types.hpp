@@ -59,7 +59,6 @@ struct CreatePageInput {
     std::optional<std::string> description;
     std::optional<std::string> icon;
     std::optional<std::string> component;
-    std::string componentTree;
     int level;
     bool requiresAuth;
     std::optional<std::string> requiredRole;
@@ -78,7 +77,6 @@ struct UpdatePageInput {
     std::optional<std::string> description;
     std::optional<std::string> icon;
     std::optional<std::string> component;
-    std::optional<std::string> componentTree;
     std::optional<int> level;
     std::optional<bool> requiresAuth;
     std::optional<std::string> requiredRole;
@@ -119,8 +117,6 @@ struct CreateWorkflowInput {
     std::optional<std::string> tenantId;
     std::string name;
     std::optional<std::string> description;
-    std::string nodes;
-    std::string edges;
     bool enabled;
     int version = 1;
     std::optional<Timestamp> createdAt;
@@ -132,8 +128,6 @@ struct UpdateWorkflowInput {
     std::optional<std::string> tenantId;
     std::optional<std::string> name;
     std::optional<std::string> description;
-    std::optional<std::string> nodes;
-    std::optional<std::string> edges;
     std::optional<bool> enabled;
     std::optional<int> version;
     std::optional<Timestamp> createdAt;
@@ -166,7 +160,6 @@ struct CreatePackageInput {
     std::optional<Timestamp> installedAt;
     std::string version;
     bool enabled;
-    std::optional<std::string> config;
 };
 
 struct UpdatePackageInput {
@@ -174,7 +167,6 @@ struct UpdatePackageInput {
     std::optional<Timestamp> installedAt;
     std::optional<std::string> version;
     std::optional<bool> enabled;
-    std::optional<std::string> config;
 };
 
 struct UpdatePackageBatchItem {

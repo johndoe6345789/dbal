@@ -48,10 +48,6 @@ inline Result<InstalledPackage> update(InMemoryStore& store, const std::string& 
         package.enabled = input.enabled.value();
     }
 
-    if (input.config.has_value()) {
-        package.config = input.config.value();
-    }
-
     return Result<InstalledPackage>(package);
 }
 
