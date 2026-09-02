@@ -113,6 +113,7 @@
   "indexes": [
     {
       "fields": [
+        "tenantId",
         "path"
       ],
       "unique": true
