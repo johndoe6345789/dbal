@@ -8,6 +8,7 @@
 #include "handlers/metrics_route_handler.hpp"
 #include "handlers/entity_route_handler.hpp"
 #include "handlers/query_route_handler.hpp"
+#include "handlers/bql/bql_route_handler.hpp"
 #include "security/jwt/jwt_validator.hpp"
 #include "security/jwt/multi_alg_jwt_validator.hpp"
 #include "security/crypto/timing_safe_equal.hpp"
@@ -1035,6 +1036,44 @@ void Server::registerRoutes() {
         {drogon::HttpMethod::Get, drogon::HttpMethod::Put,
          drogon::HttpMethod::Delete, drogon::HttpMethod::Head,
          drogon::HttpMethod::Options}
+    );
+
+    // ===== BQL syntax parser — registered BEFORE generic entity wildcard =====
+    // POST /{tenant}/{package}/bql/parse — body {"script": "..."}.
+    // Stateless (no dbal::Client, no tenant data touched): turns a
+    // "controlled English" script into a generic sentence AST that the
+    // calling app resolves against its own block/property vocabulary. See
+    // bql_route_handler.hpp for why this layer, and only this layer, lives
+    // in DBAL rather than each app.
+    drogon::app().registerHandler(
+        "/{tenant}/{package}/bql/parse",
+        [this](const drogon::HttpRequestPtr& req, DrogonCallback&& callback,
+               const std::string& tenant, const std::string& package) {
+            const char* env_cors = std::getenv("DBAL_CORS_ORIGIN");
+            std::string cors_org = env_cors ? env_cors : auth_config_.cors_origin;
+            if (req->method() == drogon::HttpMethod::Options) {
+                auto resp = drogon::HttpResponse::newHttpResponse();
+                resp->setStatusCode(drogon::k204NoContent);
+                resp->addHeader("Access-Control-Allow-Origin", cors_org);
+                resp->addHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+                resp->addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+                callback(resp);
+                return;
+            }
+            auto cb = [orig = std::move(callback), cors_org](const drogon::HttpResponsePtr& resp) {
+                resp->addHeader("Access-Control-Allow-Origin", cors_org);
+                orig(resp);
+            };
+            auto client_ip = req->getPeerAddr().toIp();
+            if (!read_limiter.allow(client_ip)) {
+                auto resp = drogon::HttpResponse::newHttpResponse();
+                resp->setStatusCode(drogon::k429TooManyRequests);
+                cb(resp); return;
+            }
+            static handlers::bql::BqlRouteHandler bql_handler;
+            bql_handler.handle(req, std::move(cb), tenant, package);
+        },
+        {drogon::HttpMethod::Post, drogon::HttpMethod::Options}
     );
 
     // ===== JSON procedure route — registered BEFORE generic entity wildcard =====

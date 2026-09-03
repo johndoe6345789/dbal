@@ -171,6 +171,9 @@ if(BUILD_TESTING)
         tests/security/sql_injection_test.cpp
         tests/unit/query_procedures_test.cpp
         tests/unit/schema_loader_test.cpp
+        tests/unit/bql_parser_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/bql/bql_lexer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/bql/bql_parser.cpp
         # Loader tests. These need nothing beyond the core/ sources already
         # linked below -- no adapter, no database -- but two of them were
         # parked in DBAL_INTEGRATION_TEST_SOURCES, which is gated behind
