@@ -131,6 +131,15 @@ void SqlAdapter::createTables() {
             throw std::runtime_error("Failed to create table " + entity.name + ": " + err.message);
         }
 
+        // Add any columns present in the schema but missing from the live
+        // table BEFORE indexing -- a new indexed field on an existing table
+        // (CREATE TABLE above is a no-op there) would otherwise have its
+        // index statement reference a column that doesn't exist yet. That
+        // failure was silently swallowed below as "index might already
+        // exist", so the real symptom was the index just never getting
+        // created on any database that predates the field, not an error.
+        migrateTable(conn, entity, sql_dialect, generator);
+
         // Generate and execute CREATE INDEX statements
         auto index_statements = generator.generateIndexes(entity, sql_dialect);
         for (const auto& index_sql : index_statements) {
@@ -140,9 +149,6 @@ void SqlAdapter::createTables() {
                 // Index might already exist, ignore error
             }
         }
-
-        // Add any columns present in the schema but missing from the live table
-        migrateTable(conn, entity, sql_dialect, generator);
     }
 }
 

@@ -120,6 +120,16 @@ void SQLiteAdapter::createTables() {
             throw std::runtime_error(error);
         }
 
+        // Add any columns the schema has grown since this table was first
+        // created BEFORE indexing -- a column an existing table doesn't
+        // have yet still needs to exist before "CREATE INDEX ... ON
+        // t(newCol)" can reference it. An existing table is untouched by
+        // CREATE TABLE above (already exists), so on an upgrade this is the
+        // step that actually adds the column; index creation used to run
+        // first and would throw here referencing a column that isn't there
+        // yet, taking the whole daemon down at startup.
+        migrateTable(entity, generator);
+
         auto index_statements = generator.generateIndexes(entity, SqlDialect::SQLite);
         for (const auto& index_sql : index_statements) {
             rc = sqlite3_exec(db_, index_sql.c_str(), nullptr, nullptr, &error_msg);
@@ -132,8 +142,6 @@ void SQLiteAdapter::createTables() {
                 throw std::runtime_error(error);
             }
         }
-
-        migrateTable(entity, generator);
     }
 
     spdlog::info("Registered {} entity schemas for CRUD operations", schemas_.size());

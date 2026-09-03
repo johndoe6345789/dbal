@@ -212,6 +212,67 @@ void test_credential_validation() {
     std::cout << "  ✓ Empty password hash rejected" << std::endl;
 }
 
+void test_credential_email_login() {
+    std::cout << "Testing sign-in by email alongside username..." << std::endl;
+
+    dbal::ClientConfig config;
+    config.adapter = "sqlite";
+    config.database_url = ":memory:";
+    dbal::Client client(config);
+
+    // A self-service founder's Credential username is a system-generated
+    // community slug ("acme-running-club"), not something they were ever
+    // shown or asked to remember -- email is the identifier they actually
+    // have, so login must resolve it back to that same canonical username.
+    dbal::CreateUserInput userInput;
+    userInput.username = "acme-running-club";
+    userInput.email = "founder@example.com";
+    auto userResult = client.createUser(userInput);
+    assert(userResult.isOk());
+
+    dbal::CreateCredentialInput credentialInput;
+    credentialInput.username = userInput.username;
+    credentialInput.passwordHash = "hash123";
+    credentialInput.email = "founder@example.com";
+    auto setResult = client.setCredential(credentialInput);
+    assert(setResult.isOk());
+
+    auto byUsername = client.verifyCredentialIdentifier("acme-running-club", "hash123");
+    assert(byUsername.isOk());
+    assert(byUsername.value() == "acme-running-club");
+    std::cout << "  ✓ Resolves by username" << std::endl;
+
+    auto byEmail = client.verifyCredentialIdentifier("founder@example.com", "hash123");
+    assert(byEmail.isOk());
+    assert(byEmail.value() == "acme-running-club");
+    std::cout << "  ✓ Resolves the same account by email" << std::endl;
+
+    auto wrongPassword = client.verifyCredentialIdentifier("founder@example.com", "wrong");
+    assert(wrongPassword.isError());
+    assert(wrongPassword.error().code() == dbal::ErrorCode::Unauthorized);
+    std::cout << "  ✓ Rejects the right email with the wrong password" << std::endl;
+
+    auto unknownEmail = client.verifyCredentialIdentifier("nobody@example.com", "hash123");
+    assert(unknownEmail.isError());
+    assert(unknownEmail.error().code() == dbal::ErrorCode::Unauthorized);
+    std::cout << "  ✓ Rejects an email nothing was registered with" << std::endl;
+
+    // A credential with no email on file (every row written before this
+    // field existed) must still be reachable by username exactly as before.
+    dbal::CreateUserInput legacyUser;
+    legacyUser.username = "legacy_user";
+    legacyUser.email = "legacy_user@example.com";
+    assert(client.createUser(legacyUser).isOk());
+    dbal::CreateCredentialInput legacyCredential;
+    legacyCredential.username = legacyUser.username;
+    legacyCredential.passwordHash = "hash789";
+    assert(client.setCredential(legacyCredential).isOk());
+    auto legacyLogin = client.verifyCredentialIdentifier("legacy_user", "hash789");
+    assert(legacyLogin.isOk());
+    assert(legacyLogin.value() == "legacy_user");
+    std::cout << "  ✓ A credential with no email on file still logs in by username" << std::endl;
+}
+
 void test_user_search() {
     std::cout << "Testing user search..." << std::endl;
 
@@ -1341,6 +1402,7 @@ int main() {
         test_user_bulk_filters();
         test_credential_crud();
         test_credential_validation();
+        test_credential_email_login();
         test_get_user();
         test_update_user();
         test_delete_user();

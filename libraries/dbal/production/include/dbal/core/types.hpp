@@ -45,6 +45,8 @@ struct CreateCredentialInput {
     std::string passwordHash;
     /** Empty => Client::getCredentialTenantId() falls back to "system". */
     std::string tenantId;
+    /** Empty => no alternate login identifier; sign-in only by username. */
+    std::string email;
 };
 
 struct UpdateCredentialInput {

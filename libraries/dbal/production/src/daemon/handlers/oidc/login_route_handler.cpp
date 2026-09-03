@@ -179,8 +179,13 @@ void LoginRouteHandler::handlePost(
         return;
     }
 
-    auto verifyResult = client_.verifyCredential(username, password);
-    if (verifyResult.isError() || !verifyResult.value()) {
+    // `username` here is whatever the visitor typed -- their real Credential
+    // username, or (see verifyCredentialIdentifier) the email they signed up
+    // with instead, since a self-service founder's username is a
+    // system-generated community slug they were never shown or asked to
+    // remember. The resolved value is the canonical username either way.
+    auto verifyResult = client_.verifyCredentialIdentifier(username, password);
+    if (verifyResult.isError()) {
         // Deliberately generic message — don't reveal whether the username exists.
         auto resp = drogon::HttpResponse::newHttpResponse();
         resp->setContentTypeCode(drogon::CT_TEXT_HTML);
@@ -195,13 +200,16 @@ void LoginRouteHandler::handlePost(
     }
 
     // Username-as-subject: simple for a credential-only login where there's
-    // no separate profile/User linkage required for the "sub" claim.
-    const std::string& userId = username;
+    // no separate profile/User linkage required for the "sub" claim. Must be
+    // the canonical username resolved above, not the raw form field -- a
+    // User row is only ever looked up by its `username` (see
+    // fetchSession.ts), never by the email someone may have typed to log in.
+    const std::string& userId = verifyResult.value();
     // Real tenant, sourced from Credential.tenantId (falls back to "system"
     // for un-migrated rows) -- this is what the multi-tenant JWT-claim
     // cross-check (server_routes.cpp) authorizes against, so it must reflect
     // the actual user, not a fixed default.
-    auto tenantResult = client_.getCredentialTenantId(username);
+    auto tenantResult = client_.getCredentialTenantId(userId);
     const std::string tenantId = tenantResult.isError() ? "system" : tenantResult.value();
 
     auto locationResult = service_.buildAuthorizeRedirect(*pending, userId, tenantId);

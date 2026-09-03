@@ -75,6 +75,7 @@ void CredentialAdminRouteHandler::handleSetCredential(
     input.username = username;
     input.passwordHash = password; // legacy field name — holds the plaintext to be hashed, see client_misc_ops.cpp
     input.tenantId = json.get("tenantId", "").asString(); // optional; falls back to "system" if omitted
+    input.email = json.get("email", "").asString(); // optional alternate login identifier
 
     auto result = client_.setCredential(input);
     if (result.isError()) {

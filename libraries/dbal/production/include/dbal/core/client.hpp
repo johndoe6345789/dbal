@@ -47,6 +47,14 @@ public:
 
     Result<bool> setCredential(const CreateCredentialInput& input);
     Result<bool> verifyCredential(const std::string& username, const std::string& password);
+    // Same check as verifyCredential, but `identifier` may be either the
+    // username or the email recorded alongside it -- resolves it to the
+    // canonical username on success, so a caller that then keys the login
+    // session, tenant lookup, or "sub" claim off the *typed* string (rather
+    // than this return value) would silently fork identity when someone
+    // logs in with email instead of username.
+    Result<std::string> verifyCredentialIdentifier(const std::string& identifier,
+                                                    const std::string& password);
     Result<bool> setCredentialFirstLoginFlag(const std::string& username, bool firstLogin);
     Result<bool> getCredentialFirstLoginFlag(const std::string& username);
     Result<bool> deleteCredential(const std::string& username);

@@ -51,6 +51,9 @@ Result<bool> Client::setCredential(const CreateCredentialInput& input) {
     if (!input.tenantId.empty()) {
         createData["tenantId"] = input.tenantId;
     }
+    if (!input.email.empty()) {
+        createData["email"] = input.email;
+    }
 
     // Deliberately doesn't touch tenantId on update: this is a
     // password-reset path (existing user changing/resetting their
@@ -84,6 +87,44 @@ Result<bool> Client::verifyCredential(const std::string& username, const std::st
         return Error::unauthorized("Invalid credentials");
     }
     return true;
+}
+
+Result<std::string> Client::verifyCredentialIdentifier(const std::string& identifier,
+                                                         const std::string& password) {
+    if (identifier.empty() || password.empty()) {
+        return Error::validationError("username and password are required");
+    }
+
+    // Try it as a username first (the common case, and a direct primary-key
+    // read rather than a scan) before falling back to treating it as the
+    // email recorded alongside a Credential -- `email` is a lookup alias,
+    // not a second primary key, so it always resolves back to one real
+    // Credential row keyed by username.
+    std::string canonicalUsername = identifier;
+    auto record = adapter_->readIncludingSensitive("Credential", identifier);
+    if (record.isError()) {
+        // findByField never returns sensitive columns (see
+        // SQLiteResultParser::rowToJson's includeSensitive gate), so this
+        // only recovers the canonical username; the hash still has to be
+        // fetched with a second, sensitive-including read below.
+        auto byEmail = adapter_->findByField("Credential", "email", identifier);
+        if (byEmail.isError()) {
+            try { dbal::security::hash_password(password); } catch (...) {}
+            return Error::unauthorized("Invalid credentials");
+        }
+        canonicalUsername = byEmail.value().value("id", std::string());
+        record = adapter_->readIncludingSensitive("Credential", canonicalUsername);
+        if (record.isError()) {
+            try { dbal::security::hash_password(password); } catch (...) {}
+            return Error::unauthorized("Invalid credentials");
+        }
+    }
+
+    std::string storedHash = record.value().value("passwordHash", std::string());
+    if (storedHash.empty() || !dbal::security::verify_password(password, storedHash)) {
+        return Error::unauthorized("Invalid credentials");
+    }
+    return canonicalUsername;
 }
 
 Result<std::string> Client::getCredentialTenantId(const std::string& username) {
