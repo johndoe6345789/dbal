@@ -14,12 +14,15 @@
 # --build=missing quietly compiles just that one. Correct, only slower.
 
 ARG BUILD_TYPE=Release
+# Stamped into the binary so /version reports which build is running.
+ARG DBAL_GIT_COMMIT=unknown
 
 # ── Build stage ──────────────────────────────────────────────────────────────
 ARG BASE_REGISTRY=metabuilder
 FROM ${BASE_REGISTRY}/base-conan-dbal:latest AS builder
 
 ARG BUILD_TYPE
+ARG DBAL_GIT_COMMIT
 
 WORKDIR /dbal
 
@@ -64,6 +67,7 @@ RUN cd /dbal/build \
     && cmake /dbal \
        -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
        -DCMAKE_TOOLCHAIN_FILE=/dbal/build/conan_toolchain.cmake \
+       -DDBAL_GIT_COMMIT=${DBAL_GIT_COMMIT} \
        -G Ninja \
     && cmake --build . --parallel \
     && strip dbal_daemon

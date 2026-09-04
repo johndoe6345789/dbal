@@ -3,6 +3,7 @@
  * @brief Implementation of health check endpoints
  */
 
+#include "build_info.hpp"
 #include "health_route_handler.hpp"
 #include "../server_helpers/response.hpp"
 #include <drogon/HttpTypes.h>
@@ -51,8 +52,11 @@ void HealthRouteHandler::handleVersion(
     }
 
     ::Json::Value body;
-    body["version"] = "1.2.1";
-    body["service"] = "DBAL Daemon";
+    body["version"] = dbal::kVersion;
+    body["service"] = dbal::kServiceName;
+    // Which build, not just which release -- see build_info.hpp.
+    body["commit"] = dbal::gitCommit();
+    body["builtAt"] = dbal::builtAt();
     callback(build_json_response(body));
 }
 

@@ -122,6 +122,27 @@ if(BUILD_DAEMON)
 
     add_executable(dbal_daemon ${DBAL_SOURCES} ${DBAL_HEADERS})
 
+    # Which build is running, answerable from /version. DBAL_GIT_COMMIT is
+    # passed by the image build (the checkout there is shallow and may have
+    # no .git at all); falling back to asking git covers a local build, and
+    # build_info.hpp says "unknown" when neither is available rather than
+    # inventing something.
+    if(NOT DEFINED DBAL_GIT_COMMIT)
+        execute_process(
+            COMMAND git rev-parse --short=12 HEAD
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            OUTPUT_VARIABLE DBAL_GIT_COMMIT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET)
+    endif()
+    string(TIMESTAMP DBAL_BUILT_AT "%Y-%m-%dT%H:%M:%SZ" UTC)
+    if(DBAL_GIT_COMMIT)
+        target_compile_definitions(dbal_daemon PRIVATE
+            DBAL_GIT_COMMIT="${DBAL_GIT_COMMIT}")
+    endif()
+    target_compile_definitions(dbal_daemon PRIVATE
+        DBAL_BUILT_AT="${DBAL_BUILT_AT}")
+
     target_include_directories(dbal_daemon PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/daemon

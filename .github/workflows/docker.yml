@@ -88,6 +88,7 @@ jobs:
           docker build \
             -f libraries/dbal/production/build-config/Dockerfile \
             --build-arg BUILD_TYPE=Release \
+            --build-arg DBAL_GIT_COMMIT="${SHA}" \
             -t "$IMAGE:${SHA}-${ARCH}" \
             libraries/dbal
 

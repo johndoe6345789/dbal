@@ -1,3 +1,4 @@
+#include "build_info.hpp"
 #include "daemon_init.hpp"
 #include <cstdlib>
 #include <csignal>
@@ -50,7 +51,8 @@ void DaemonInit::setupLogging() {
 
 void DaemonInit::printBanner() {
     spdlog::info("╔════════════════════════════════════════════╗");
-    spdlog::info("║         DBAL Daemon v1.2.1                 ║");
+    spdlog::info("║         {} v{} ({})", dbal::kServiceName, dbal::kVersion,
+                 dbal::gitCommit());
     spdlog::info("║   Database Abstraction Layer Server       ║");
     spdlog::info("║   Copyright (c) 2024 MetaBuilder           ║");
     spdlog::info("╚════════════════════════════════════════════╝");
