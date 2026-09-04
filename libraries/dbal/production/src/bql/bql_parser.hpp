@@ -10,7 +10,7 @@ namespace dbal {
 namespace bql {
 
 /**
- * The five BQL sentence forms, as pure syntax -- this layer knows nothing
+ * The BQL sentence forms, as pure syntax -- this layer knows nothing
  * about what block names or properties are valid (that's the calling app's
  * job, against its own vocabulary). See
  * frontends/nextjs/.../bql/parser.ts for the reference grammar this is a
@@ -23,7 +23,7 @@ struct BqlAttr {
 };
 
 struct BqlSentence {
-    enum class Kind { Add, Give, Style, Class };
+    enum class Kind { Add, Give, Style, Class, Publish };
     Kind kind = Kind::Add;
     int line = 0;  // 1-based source line, set by parseScript
 
@@ -33,8 +33,10 @@ struct BqlSentence {
     std::optional<std::string> parentAlias;  // add
     std::vector<BqlAttr> attrs;              // add, give, style
 
-    std::string name;                        // style (the class name)
+    std::string name;                        // style (the class name),
+                                             // publish (the page title)
     std::vector<std::string> names;          // class (the class names applied)
+    std::string path;                        // publish (the route)
 };
 
 struct SentenceResult {

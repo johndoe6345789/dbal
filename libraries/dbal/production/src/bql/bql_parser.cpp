@@ -291,6 +291,43 @@ SentenceResult parseApply(Cursor& c, const std::string& rawLine) {
     return r;
 }
 
+
+/** `publish this as "About" at /about` -- says where the tree the script
+ *  just built should live. The title is optional (a caller can fall back to
+ *  the path), and the path may be bare or quoted: the lexer treats /about as
+ *  one word, so quoting it is a preference rather than a requirement. */
+SentenceResult parsePublish(Cursor& c, const std::string& rawLine) {
+    c.next();
+    if (isWord(c, "this")) c.next();
+
+    std::string title;
+    if (isWord(c, "as")) {
+        c.next();
+        const Token* titleTok = c.next();
+        if (titleTok == nullptr || titleTok->type != Token::Type::String) {
+            return fail("Could not read the title in: \"" + rawLine + "\"");
+        }
+        title = titleTok->value;
+    }
+
+    if (!isWord(c, "at")) {
+        return fail("Missing \"at <path>\" in: \"" + rawLine + "\"");
+    }
+    c.next();
+    const Token* pathTok = c.next();
+    if (pathTok == nullptr ||
+        (pathTok->type != Token::Type::Word && pathTok->type != Token::Type::String)) {
+        return fail("Could not read the path in: \"" + rawLine + "\"");
+    }
+
+    SentenceResult r;
+    r.ok = true;
+    r.sentence.kind = BqlSentence::Kind::Publish;
+    r.sentence.name = title;
+    r.sentence.path = pathTok->value;
+    return r;
+}
+
 std::vector<Token> stripTerminator(std::vector<Token> tokens) {
     if (!tokens.empty()) {
         const Token& last = tokens.back();
@@ -303,6 +340,7 @@ std::vector<Token> stripTerminator(std::vector<Token> tokens) {
 
 SentenceResult parseSentence(const std::string& rawLine) {
     Cursor c(stripTerminator(tokenize(trim(rawLine))));
+    if (isWord(c, "publish")) return parsePublish(c, rawLine);
     if (isWord(c, "apply")) return parseApply(c, rawLine);
     if (isWord(c, "make")) return parseStyle(c, rawLine);
     if (isWord(c, "give")) return parseGive(c, rawLine);
@@ -385,6 +423,13 @@ nlohmann::json toJson(const BqlSentence& sentence) {
         case BqlSentence::Kind::Class:
             j = {{"kind", "class"}, {"names", sentence.names}, {"alias", *sentence.alias}};
             break;
+        case BqlSentence::Kind::Publish: {
+            j = {{"kind", "publish"}, {"path", sentence.path}};
+            // Absent rather than empty: a caller falls back to the path, and
+            // "" would read as a page deliberately titled nothing.
+            if (!sentence.name.empty()) j["title"] = sentence.name;
+            break;
+        }
     }
     j["line"] = sentence.line;
     return j;

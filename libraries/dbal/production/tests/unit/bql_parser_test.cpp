@@ -177,6 +177,63 @@ TEST(BqlParser, ReportsAnErrorInsteadOfGuessing) {
 
 // ===== JSON serialization =====
 
+// ===== Publishing a page =====
+//
+// A script that builds a page could not say where the page goes, so the
+// route had to be set by hand in the panel between running the script and
+// pressing Publish -- and the path silently reverted if you changed tabs.
+
+TEST(BqlParser, ParsesPublishWithATitle) {
+    auto result = parseSentence("publish this as \"About\" at /about");
+    ASSERT_TRUE(result.ok) << result.error;
+    EXPECT_EQ(result.sentence.kind, BqlSentence::Kind::Publish);
+    EXPECT_EQ(result.sentence.name, "About");
+    EXPECT_EQ(result.sentence.path, "/about");
+}
+
+TEST(BqlParser, ParsesPublishWithoutATitle) {
+    auto result = parseSentence("publish this at /contact");
+    ASSERT_TRUE(result.ok) << result.error;
+    EXPECT_EQ(result.sentence.kind, BqlSentence::Kind::Publish);
+    EXPECT_TRUE(result.sentence.name.empty());
+    EXPECT_EQ(result.sentence.path, "/contact");
+}
+
+TEST(BqlParser, ParsesPublishWithoutTheWordThis) {
+    auto result = parseSentence("publish as \"Home\" at /");
+    ASSERT_TRUE(result.ok) << result.error;
+    EXPECT_EQ(result.sentence.name, "Home");
+    EXPECT_EQ(result.sentence.path, "/");
+}
+
+TEST(BqlParser, AcceptsAQuotedPathToo) {
+    auto result = parseSentence("publish this as \"About\" at \"/about\"");
+    ASSERT_TRUE(result.ok) << result.error;
+    EXPECT_EQ(result.sentence.path, "/about");
+}
+
+TEST(BqlParser, RefusesPublishWithNoPath) {
+    auto result = parseSentence("publish this as \"About\"");
+    EXPECT_FALSE(result.ok);
+}
+
+TEST(BqlParserJson, PublishSentenceRoundTripsExpectedShape) {
+    auto result = parseSentence("publish this as \"About\" at /about");
+    ASSERT_TRUE(result.ok);
+    auto json = toJson(result.sentence);
+    EXPECT_EQ(json["kind"], "publish");
+    EXPECT_EQ(json["title"], "About");
+    EXPECT_EQ(json["path"], "/about");
+}
+
+TEST(BqlParserJson, PublishWithoutATitleOmitsIt) {
+    auto result = parseSentence("publish this at /about");
+    ASSERT_TRUE(result.ok);
+    auto json = toJson(result.sentence);
+    EXPECT_FALSE(json.contains("title"));
+    EXPECT_EQ(json["path"], "/about");
+}
+
 TEST(BqlParserJson, AddSentenceRoundTripsExpectedShape) {
     auto r = parseSentence("Inside hero, add a Button called heroCta that says \"Join now\".");
     ASSERT_TRUE(r.ok);
