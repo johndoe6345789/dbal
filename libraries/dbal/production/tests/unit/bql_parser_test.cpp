@@ -177,6 +177,32 @@ TEST(BqlParser, ReportsAnErrorInsteadOfGuessing) {
 
 // ===== JSON serialization =====
 
+// ===== Starting a fresh page =====
+//
+// Sentences add to whatever tree the editor has loaded, so a script for a
+// second page silently inherited the first page's blocks, and running the
+// same script twice added its blocks twice.
+
+TEST(BqlParser, ParsesStartANewPage) {
+    auto result = parseSentence("start a new page");
+    ASSERT_TRUE(result.ok) << result.error;
+    EXPECT_EQ(result.sentence.kind, BqlSentence::Kind::Clear);
+}
+
+TEST(BqlParser, StartANewPageTakesAnOptionalArticle) {
+    EXPECT_TRUE(parseSentence("start new page").ok);
+}
+
+TEST(BqlParser, RefusesAHalfWrittenStartSentence) {
+    EXPECT_FALSE(parseSentence("start a page").ok);
+}
+
+TEST(BqlParserJson, ClearSentenceRoundTripsExpectedShape) {
+    auto result = parseSentence("start a new page");
+    ASSERT_TRUE(result.ok);
+    EXPECT_EQ(toJson(result.sentence)["kind"], "clear");
+}
+
 // ===== Publishing a page =====
 //
 // A script that builds a page could not say where the page goes, so the

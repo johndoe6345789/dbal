@@ -23,7 +23,7 @@ struct BqlAttr {
 };
 
 struct BqlSentence {
-    enum class Kind { Add, Give, Style, Class, Publish };
+    enum class Kind { Add, Give, Style, Class, Publish, Clear };
     Kind kind = Kind::Add;
     int line = 0;  // 1-based source line, set by parseScript
 

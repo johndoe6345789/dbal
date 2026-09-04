@@ -328,6 +328,26 @@ SentenceResult parsePublish(Cursor& c, const std::string& rawLine) {
     return r;
 }
 
+
+/** `start a new page` -- everything after this line builds a page of its
+ *  own rather than adding to whatever the editor already had loaded.
+ *  Without it a script that ends in `publish this at /classes` quietly
+ *  appended its blocks to the previous page still in the editor, and a
+ *  re-run appended them a second time. */
+SentenceResult parseClear(Cursor& c, const std::string& rawLine) {
+    c.next();
+    skipArticle(c);
+    if (!isWord(c, "new")) return fail("Could not read: \"" + rawLine + "\"");
+    c.next();
+    if (!isWord(c, "page")) return fail("Could not read: \"" + rawLine + "\"");
+    c.next();
+
+    SentenceResult r;
+    r.ok = true;
+    r.sentence.kind = BqlSentence::Kind::Clear;
+    return r;
+}
+
 std::vector<Token> stripTerminator(std::vector<Token> tokens) {
     if (!tokens.empty()) {
         const Token& last = tokens.back();
@@ -340,6 +360,7 @@ std::vector<Token> stripTerminator(std::vector<Token> tokens) {
 
 SentenceResult parseSentence(const std::string& rawLine) {
     Cursor c(stripTerminator(tokenize(trim(rawLine))));
+    if (isWord(c, "start")) return parseClear(c, rawLine);
     if (isWord(c, "publish")) return parsePublish(c, rawLine);
     if (isWord(c, "apply")) return parseApply(c, rawLine);
     if (isWord(c, "make")) return parseStyle(c, rawLine);
@@ -422,6 +443,9 @@ nlohmann::json toJson(const BqlSentence& sentence) {
             break;
         case BqlSentence::Kind::Class:
             j = {{"kind", "class"}, {"names", sentence.names}, {"alias", *sentence.alias}};
+            break;
+        case BqlSentence::Kind::Clear:
+            j = {{"kind", "clear"}};
             break;
         case BqlSentence::Kind::Publish: {
             j = {{"kind", "publish"}, {"path", sentence.path}};
