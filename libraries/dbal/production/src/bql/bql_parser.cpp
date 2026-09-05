@@ -360,14 +360,30 @@ std::vector<Token> stripTerminator(std::vector<Token> tokens) {
 
 SentenceResult parseSentence(const std::string& rawLine) {
     Cursor c(stripTerminator(tokenize(trim(rawLine))));
-    if (isWord(c, "start")) return parseClear(c, rawLine);
-    if (isWord(c, "publish")) return parsePublish(c, rawLine);
-    if (isWord(c, "apply")) return parseApply(c, rawLine);
-    if (isWord(c, "make")) return parseStyle(c, rawLine);
-    if (isWord(c, "give")) return parseGive(c, rawLine);
-    if (isWord(c, "inside")) return parseInsideAdd(c, rawLine);
-    if (isWord(c, "add")) return parseAdd(c, rawLine);
-    return fail("Didn't understand: \"" + rawLine + "\"");
+    SentenceResult result = [&]() -> SentenceResult {
+        if (isWord(c, "start")) return parseClear(c, rawLine);
+        if (isWord(c, "publish")) return parsePublish(c, rawLine);
+        if (isWord(c, "apply")) return parseApply(c, rawLine);
+        if (isWord(c, "make")) return parseStyle(c, rawLine);
+        if (isWord(c, "give")) return parseGive(c, rawLine);
+        if (isWord(c, "inside")) return parseInsideAdd(c, rawLine);
+        if (isWord(c, "add")) return parseAdd(c, rawLine);
+        return fail("Didn't understand: \"" + rawLine + "\"");
+    }();
+
+    // Anything left over means the line was not fully understood, and
+    // saying so beats acting on the half that parsed. "publish this at
+    // /about now" silently published to /about and dropped the rest;
+    // every sentence form had the same hole, so a typo anywhere past the
+    // part that parsed went unreported.
+    if (result.ok) {
+        const Token* extra = c.peek();
+        if (extra != nullptr) {
+            return fail("Did not understand \"" + extra->value +
+                        "\" in: \"" + rawLine + "\"");
+        }
+    }
+    return result;
 }
 
 ScriptParseResult parseScript(const std::string& script) {

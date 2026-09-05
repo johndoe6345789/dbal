@@ -177,6 +177,37 @@ TEST(BqlParser, ReportsAnErrorInsteadOfGuessing) {
 
 // ===== JSON serialization =====
 
+// ===== Leftover words =====
+//
+// Every form stopped parsing once it had what it needed and ignored the
+// rest, so "publish this at /about now" published to /about and dropped
+// the word -- a typo anywhere past the understood part went unreported.
+
+TEST(BqlParser, RefusesWordsAfterAPublishPath) {
+    auto result = parseSentence("publish this at /about extra words");
+    EXPECT_FALSE(result.ok);
+    EXPECT_NE(result.error.find("extra"), std::string::npos);
+}
+
+TEST(BqlParser, RefusesASecondPathTackedOn) {
+    EXPECT_FALSE(parseSentence("publish this as \"A\" at /a and also at /b").ok);
+}
+
+TEST(BqlParser, RefusesWordsAfterStartANewPage) {
+    EXPECT_FALSE(parseSentence("start a new page please").ok);
+}
+
+TEST(BqlParser, RefusesWordsAfterApply) {
+    EXPECT_FALSE(parseSentence("apply \"x\" to hero now").ok);
+}
+
+TEST(BqlParser, StillAcceptsEveryWellFormedSentence) {
+    EXPECT_TRUE(parseSentence("add a Container.").ok);
+    EXPECT_TRUE(parseSentence("apply \"a\", \"b\" to hero").ok);
+    EXPECT_TRUE(
+        parseSentence("add a Container called row with direction of Across the page, gap of 24").ok);
+}
+
 // ===== Starting a fresh page =====
 //
 // Sentences add to whatever tree the editor has loaded, so a script for a
