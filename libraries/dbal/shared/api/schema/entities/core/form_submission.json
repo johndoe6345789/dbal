@@ -1,0 +1,61 @@
+{
+  "entity": "FormSubmission",
+  "version": "1.0",
+  "description": "Something a visitor sent from a published page's form. Deliberately generic: one entity serves a repair booking, an enquiry and a sign-up sheet alike, so a tenant never needs a schema of its own to collect an answer. `formName` says which form it came from and `data` holds the answers, which is what a workflow reads as ${event.data.<field>}.",
+  "fields": {
+    "id": {
+      "type": "string",
+      "primary": true,
+      "required": true,
+      "unique": true,
+      "description": "Unique submission identifier"
+    },
+    "tenantId": {
+      "type": "string",
+      "required": true,
+      "description": "Tenant this was submitted to"
+    },
+    "formName": {
+      "type": "string",
+      "required": true,
+      "max_length": 120,
+      "description": "Which form on the site this came from, e.g. 'book-a-repair'"
+    },
+    "path": {
+      "type": "string",
+      "optional": true,
+      "nullable": true,
+      "max_length": 255,
+      "description": "The page path the form was submitted from"
+    },
+    "data": {
+      "type": "json",
+      "required": true,
+      "description": "The answers, as a flat object of field name to value"
+    },
+    "status": {
+      "type": "string",
+      "optional": true,
+      "nullable": true,
+      "privileged": true,
+      "max_length": 40,
+      "description": "Where the tenant has got to with it -- 'new', 'handled'. Privileged: a visitor submits an answer, they do not get to say it has already been dealt with"
+    },
+    "createdAt": {
+      "type": "timestamp",
+      "optional": true,
+      "nullable": true,
+      "description": "When it was submitted"
+    }
+  },
+  "indexes": [
+    { "fields": ["tenantId", "formName"] },
+    { "fields": ["tenantId", "createdAt"] }
+  ],
+  "acl": {
+    "create": { "public": true },
+    "read": { "admin": true, "self": true },
+    "update": { "admin": true },
+    "delete": { "admin": true }
+  }
+}

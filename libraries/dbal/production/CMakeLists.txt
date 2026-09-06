@@ -221,6 +221,12 @@ if(BUILD_TESTING)
         # ES HTTP client and cpr for a test that needs neither.
         tests/unit/search_config_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/search/search_config.cpp
+        # Rebuilding a God-Panel workflow from its rows: ordering by edges
+        # and reading values back by their type column. Both pure, so
+        # wf_graph_loader.cpp is deliberately not linked here -- it would
+        # drag in dbal::Client and an adapter for a test that needs neither.
+        tests/unit/wf_graph_order_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/workflow/wf_graph_order.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/security/crypto/reversible_crypto.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/oidc/crypto/rsa_keypair.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/oidc/tokens/token_issuer.cpp

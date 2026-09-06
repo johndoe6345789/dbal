@@ -48,6 +48,12 @@
       "optional": true,
       "nullable": true
     },
+    "triggerEvent": {
+      "type": "string",
+      "description": "The entity event that runs this workflow, as '<Entity>.created' -- the tenant is implied by the row. Empty means the workflow only runs when something asks for it by name.",
+      "optional": true,
+      "nullable": true
+    },
     "isPublished": {
       "type": "boolean",
       "description": "Whether this workflow is published. Indexed on (tenantId, isPublished); raised by the workflow.published event.",
@@ -129,6 +135,12 @@
       "fields": [
         "tenantId",
         "updatedAt"
+      ]
+    },
+    {
+      "fields": [
+        "tenantId",
+        "triggerEvent"
       ]
     }
   ],

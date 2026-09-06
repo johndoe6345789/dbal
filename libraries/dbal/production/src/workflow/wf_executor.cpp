@@ -9,16 +9,13 @@ void WfExecutor::registerStep(std::shared_ptr<IWfStep> step) {
     steps_[step->type()] = std::move(step);
 }
 
-std::vector<WfNode> WfExecutor::loadNodes(const std::string& path) {
-    std::ifstream f(path);
-    if (!f.is_open())
-        throw std::runtime_error("workflow: cannot open '" + path + "'");
-    nlohmann::json doc = nlohmann::json::parse(f);
+std::vector<WfNode> WfExecutor::parseNodes(const nlohmann::json& doc,
+                                           const std::string& label) {
     if (!doc.contains("nodes") || !doc["nodes"].is_array())
-        throw std::runtime_error("workflow: '" + path + "' missing 'nodes' array");
+        throw std::runtime_error("workflow: '" + label + "' missing 'nodes' array");
 
     std::vector<WfNode> nodes;
-    for (auto& n : doc["nodes"]) {
+    for (const auto& n : doc["nodes"]) {
         WfNode node;
         node.id         = n.value("id", "");
         node.type       = n.value("type", "");
@@ -29,14 +26,26 @@ std::vector<WfNode> WfExecutor::loadNodes(const std::string& path) {
     return nodes;
 }
 
+std::vector<WfNode> WfExecutor::loadNodes(const std::string& path) {
+    std::ifstream f(path);
+    if (!f.is_open())
+        throw std::runtime_error("workflow: cannot open '" + path + "'");
+    return parseNodes(nlohmann::json::parse(f), path);
+}
+
 void WfExecutor::execute(const std::string& workflow_path,
                          WfContext& ctx, dbal::Client& client) const {
-    auto nodes = loadNodes(workflow_path);
-    spdlog::info("[workflow] executing {} nodes: {}",
-                 nodes.size(), workflow_path.substr(workflow_path.rfind('/') + 1));
+    executeNodes(loadNodes(workflow_path),
+                 workflow_path.substr(workflow_path.rfind('/') + 1), ctx, client);
+}
+
+void WfExecutor::executeNodes(const std::vector<WfNode>& nodes,
+                              const std::string& label,
+                              WfContext& ctx, dbal::Client& client) const {
+    spdlog::info("[workflow] executing {} nodes: {}", nodes.size(), label);
 
     for (size_t i = 0; i < nodes.size(); ++i) {
-        auto& node = nodes[i];
+        const auto& node = nodes[i];
         auto it = steps_.find(node.type);
         if (it == steps_.end()) {
             spdlog::warn("[workflow] skipping unknown step type '{}' (id={})", node.type, node.id);
