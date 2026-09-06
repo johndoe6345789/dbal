@@ -190,6 +190,7 @@ namespace {
      * back. Narrowing `self`/`row_level` to the caller's own rows belongs to
      * the auth_config filter_by_owner path further down.
      */
+    template <typename OidcServiceOpt>
     drogon::HttpResponsePtr read_authz_rejection(
         const drogon::HttpRequestPtr& req,
         const dbal::core::SchemaAclRegistry* registry,
