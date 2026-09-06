@@ -307,3 +307,83 @@ TEST(SchemaAclRegistry, EntityWithNoWriteRuleIsNotPublic) {
     EXPECT_FALSE(registry.isPublicWrite("Snippet", "create"));
     EXPECT_TRUE(registry.isPublicWrite("Snippet", "read"));
 }
+
+/**
+ * Reads had no gate at all. `isSystemOnly` looks for the literal key
+ * "system", so only the seven entities that spell it were protected --
+ * every entity declaring read as self/admin/role/row_level answered an
+ * anonymous GET in full. On the live deployment that meant `core/User`
+ * returned every account's email, username, role and isInstanceOwner flag
+ * to a caller holding nothing, and AuditLog (declared admin/god) the same.
+ *
+ * The rule below is the read mirror of isPublicWrite: an entity that
+ * bothered to declare who may read it has, by declaring anything other
+ * than public, said "not anonymous". An entity declaring no read ACL is
+ * left open, which is the same fail-open default the rest of this registry
+ * uses -- a schema nobody has written rules for keeps working.
+ */
+TEST(SchemaAclRegistry, DeclaredReadWithoutPublicRequiresAuth) {
+    TempSchemaDir dir;
+    dir.writeSchema("User.json", R"({
+        "entity": "User",
+        "fields": { "id": { "type": "string", "primary": true } },
+        "acl": { "read": { "self": true, "admin": true } }
+    })");
+    SchemaAclRegistry registry(dir.path());
+
+    EXPECT_TRUE(registry.requiresAuthToRead("User"));
+}
+
+TEST(SchemaAclRegistry, PublicReadStaysAnonymous) {
+    // Published pages are served to signed-out visitors; this is the set
+    // that must keep answering without a token.
+    TempSchemaDir dir;
+    dir.writeSchema("PageConfig.json", R"({
+        "entity": "PageConfig",
+        "fields": { "id": { "type": "string", "primary": true } },
+        "acl": { "read": { "public": true }, "create": { "role": ["god"] } }
+    })");
+    SchemaAclRegistry registry(dir.path());
+
+    EXPECT_FALSE(registry.requiresAuthToRead("PageConfig"));
+}
+
+TEST(SchemaAclRegistry, EntityWithNoReadRuleStaysOpen) {
+    TempSchemaDir dir;
+    dir.writeSchema("Note.json", R"({
+        "entity": "Note",
+        "fields": { "id": { "type": "string", "primary": true } },
+        "acl": { "create": { "public": true } }
+    })");
+    SchemaAclRegistry registry(dir.path());
+
+    EXPECT_FALSE(registry.requiresAuthToRead("Note"));
+}
+
+TEST(SchemaAclRegistry, UnknownEntityStaysOpenToRead) {
+    TempSchemaDir dir;
+    dir.writeSchema("Note.json", R"({
+        "entity": "Note",
+        "fields": { "id": { "type": "string", "primary": true } },
+        "acl": { "read": { "self": true } }
+    })");
+    SchemaAclRegistry registry(dir.path());
+
+    EXPECT_FALSE(registry.requiresAuthToRead("NoSuchEntity"));
+}
+
+/**
+ * row_level is how the email entities spell "your own rows only". It is
+ * not public, so it must gate too -- EmailMessage was readable by anyone.
+ */
+TEST(SchemaAclRegistry, RowLevelReadRequiresAuth) {
+    TempSchemaDir dir;
+    dir.writeSchema("EmailMessage.json", R"({
+        "entity": "EmailMessage",
+        "fields": { "id": { "type": "string", "primary": true } },
+        "acl": { "read": { "row_level": true, "self": true } }
+    })");
+    SchemaAclRegistry registry(dir.path());
+
+    EXPECT_TRUE(registry.requiresAuthToRead("EmailMessage"));
+}

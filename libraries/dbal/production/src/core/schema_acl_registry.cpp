@@ -45,6 +45,16 @@ bool SchemaAclRegistry::isPublicWrite(const std::string& entity,
     return pub != opMap->end() && pub->second;
 }
 
+bool SchemaAclRegistry::requiresAuthToRead(const std::string& entity) const {
+    auto it = schemas_.find(entity);
+    if (it == schemas_.end() || !it->second.acl.has_value()) return false;
+    const auto* opMap = operationMap(*it->second.acl, "read");
+    // No read rule declared is not a restriction.
+    if (!opMap || opMap->empty()) return false;
+    auto pub = opMap->find("public");
+    return !(pub != opMap->end() && pub->second);
+}
+
 std::vector<std::string> SchemaAclRegistry::privilegedFields(
     const std::string& entity) const {
     std::vector<std::string> names;

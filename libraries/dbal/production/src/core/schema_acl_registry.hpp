@@ -56,6 +56,22 @@ public:
      */
     bool isPublicWrite(const std::string& entity, const std::string& method) const;
 
+    /**
+     * @brief True if @p entity may only be read by an authenticated caller.
+     *
+     * The read mirror of isPublicWrite. An entity that declares a read ACL
+     * without granting `public` has said who may read it, and anonymous is
+     * not on the list -- self, admin, role and row_level all mean "somebody
+     * in particular". Declaring no read rule at all leaves the entity open,
+     * the same fail-open default the predicates above use.
+     *
+     * This gates *access*, not rows: an authenticated caller still reads the
+     * whole collection. Narrowing self/row_level to the caller's own rows is
+     * the auth_config filter_by_owner machinery's job, and is unfinished for
+     * entities outside the pastebin tenant.
+     */
+    bool requiresAuthToRead(const std::string& entity) const;
+
     /** @brief Fields an unauthenticated caller may not set. */
     std::vector<std::string> privilegedFields(const std::string& entity) const;
 

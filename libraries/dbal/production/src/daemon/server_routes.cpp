@@ -175,6 +175,59 @@ namespace {
         return nullptr;
     }
 
+    /**
+     * Reads had no authorization gate at all: write_authz_rejection returns
+     * immediately unless the method is a write, and isSystemOnly only ever
+     * matched the literal key "system". So the seven entities that spell
+     * "system" were protected and the other twenty-three that declare a read
+     * ACL -- User, AuditLog, EmailMessage, ComponentTree, Project, Settings,
+     * Theme, KVEntry among them -- answered an anonymous GET in full. On the
+     * live deployment `GET /system/core/User` returned every account's email,
+     * username, role and isInstanceOwner flag to a caller holding nothing.
+     *
+     * The gate is deliberately access-level, not row-level: it decides
+     * whether this caller may read the entity at all, not which rows come
+     * back. Narrowing `self`/`row_level` to the caller's own rows belongs to
+     * the auth_config filter_by_owner path further down.
+     */
+    drogon::HttpResponsePtr read_authz_rejection(
+        const drogon::HttpRequestPtr& req,
+        const dbal::core::SchemaAclRegistry* registry,
+        const std::string& entity,
+        const std::string& jwt_secret,
+        const OidcServiceOpt& oidc_service) {
+        if (!registry || req->method() != drogon::HttpMethod::Get) return nullptr;
+        if (!registry->requiresAuthToRead(entity)) return nullptr;
+
+        // The admin token is the operator's own key, not a user role.
+        if (const char* tok = std::getenv("DBAL_ADMIN_TOKEN"); tok && std::strlen(tok) > 0) {
+            if (dbal::security::timing_safe_equal(req->getHeader("Authorization"),
+                                                  std::string("Bearer ") + tok)) {
+                return nullptr;
+            }
+        }
+
+        std::string pub = oidc_service ? oidc_service->keypair().publicKeyPem() : std::string();
+        std::string iss = oidc_service ? oidc_service->issuer() : std::string();
+        auto claims = dbal::security::MultiAlgJwtValidator::fromRequest(req, jwt_secret, pub, iss);
+
+        ::Json::Value body;
+        body["success"] = false;
+        if (!claims) {
+            body["error"] = "Authentication required to read this entity";
+            auto r = drogon::HttpResponse::newHttpJsonResponse(body);
+            r->setStatusCode(drogon::k401Unauthorized);
+            return r;
+        }
+        if (!registry->roleAllowed(entity, "read", claims->role)) {
+            body["error"] = "Your role may not read this entity";
+            auto r = drogon::HttpResponse::newHttpJsonResponse(body);
+            r->setStatusCode(drogon::k403Forbidden);
+            return r;
+        }
+        return nullptr;
+    }
+
     struct RateLimitEntry {
         int count = 0;
         std::chrono::steady_clock::time_point window_start = std::chrono::steady_clock::now();
@@ -1195,6 +1248,11 @@ void Server::registerRoutes() {
                     entity, jwt_secret_, oidc_service_)) {
                 cb(reject); return;
             }
+            if (auto reject = read_authz_rejection(
+                    req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
+                    entity, jwt_secret_, oidc_service_)) {
+                cb(reject); return;
+            }
             // JWT auth + ownership context
             std::optional<handlers::AuthContext> auth_ctx;
             auto entity_cfg = auth_config_.getEntityConfig(tenant, entity);
@@ -1296,6 +1354,11 @@ void Server::registerRoutes() {
                 cb(resp); return;
             }
             if (auto reject = write_authz_rejection(
+                    req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
+                    entity, jwt_secret_, oidc_service_)) {
+                cb(reject); return;
+            }
+            if (auto reject = read_authz_rejection(
                     req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
                     entity, jwt_secret_, oidc_service_)) {
                 cb(reject); return;
@@ -1402,6 +1465,11 @@ void Server::registerRoutes() {
                 cb(resp); return;
             }
             if (auto reject = write_authz_rejection(
+                    req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
+                    entity, jwt_secret_, oidc_service_)) {
+                cb(reject); return;
+            }
+            if (auto reject = read_authz_rejection(
                     req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
                     entity, jwt_secret_, oidc_service_)) {
                 cb(reject); return;
