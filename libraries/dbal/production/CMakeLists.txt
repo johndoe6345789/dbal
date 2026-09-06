@@ -232,6 +232,8 @@ if(BUILD_TESTING)
         # one translation unit and no database.
         tests/unit/sql_json_field_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/adapters/sql/sql_result_parser.cpp
+        # jsonToParams calls into the type mapper, which is self-contained.
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/adapters/sql/sql_type_mapper.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/security/crypto/reversible_crypto.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/oidc/crypto/rsa_keypair.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/oidc/tokens/token_issuer.cpp
