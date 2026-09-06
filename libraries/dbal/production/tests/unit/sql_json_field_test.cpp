@@ -13,8 +13,8 @@
 
 #include "adapters/sql/sql_result_parser.hpp"
 
+using dbal::adapters::EntityField;
 using dbal::adapters::sql::SqlResultParser;
-using dbal::core::EntityField;
 
 namespace {
 
@@ -29,7 +29,7 @@ EntityField field(const std::string& type, bool required = true) {
 } // namespace
 
 TEST(SqlJsonField, RebuildsTheObjectThatWasStored) {
-    const auto value = SqlResultParser::parseValue(
+    const nlohmann::json value = SqlResultParser::parseValue(
         R"({"name":"Rosa","job":"Buckled rear wheel"})", field("json"));
 
     ASSERT_TRUE(value.is_object());
@@ -39,7 +39,7 @@ TEST(SqlJsonField, RebuildsTheObjectThatWasStored) {
 
 // ${event.data.name} is a dot-path, so `data` must be walkable.
 TEST(SqlJsonField, LetsADotPathReachAField) {
-    const auto value =
+    const nlohmann::json value =
         SqlResultParser::parseValue(R"({"name":"Rosa"})", field("json"));
 
     ASSERT_TRUE(value.is_object());
@@ -48,7 +48,7 @@ TEST(SqlJsonField, LetsADotPathReachAField) {
 }
 
 TEST(SqlJsonField, RebuildsAnArrayToo) {
-    const auto value =
+    const nlohmann::json value =
         SqlResultParser::parseValue(R"(["a","b"])", field("json"));
 
     ASSERT_TRUE(value.is_array());
@@ -56,7 +56,7 @@ TEST(SqlJsonField, RebuildsAnArrayToo) {
 }
 
 TEST(SqlJsonField, KeepsAStringColumnAString) {
-    const auto value =
+    const nlohmann::json value =
         SqlResultParser::parseValue(R"({"a":1})", field("string"));
 
     ASSERT_TRUE(value.is_string());
@@ -69,7 +69,7 @@ TEST(SqlJsonField, KeepsAStringColumnAString) {
  * and it is at least visible to whoever has to fix it.
  */
 TEST(SqlJsonField, FallsBackToTheTextWhenItWillNotParse) {
-    const auto value = SqlResultParser::parseValue("not json", field("json"));
+    const nlohmann::json value = SqlResultParser::parseValue("not json", field("json"));
 
     ASSERT_TRUE(value.is_string());
     EXPECT_EQ(value.get<std::string>(), "not json");
@@ -82,6 +82,6 @@ TEST(SqlJsonField, LeavesOtherTypesAlone) {
 }
 
 TEST(SqlJsonField, AnEmptyOptionalColumnIsStillNull) {
-    const auto value = SqlResultParser::parseValue("", field("json", false));
+    const nlohmann::json value = SqlResultParser::parseValue("", field("json", false));
     EXPECT_TRUE(value.is_null());
 }
