@@ -68,7 +68,14 @@ public:
     static std::vector<std::pair<std::string, std::string>>
     jsonToParams(const EntitySchema& schema, const Json& data, const std::string& prepend_id = "");
 
-private:
+    /**
+     * One column's text, as the value its schema type says it is.
+     *
+     * Public because it is a pure conversion with no connection behind it,
+     * and because it is where a whole class of bug lives: a type the
+     * schema declares but this does not decode surfaces as a string, and
+     * everything downstream quietly treats it as one.
+     */
     static Json parseValue(const std::string& value, const EntityField& field);
 };
 

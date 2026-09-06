@@ -227,6 +227,11 @@ if(BUILD_TESTING)
         # drag in dbal::Client and an adapter for a test that needs neither.
         tests/unit/wf_graph_order_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workflow/wf_graph_order.cpp
+        # A json column has to come back as the object it went in as.
+        # parseValue is pure -- no connection behind it -- so this needs the
+        # one translation unit and no database.
+        tests/unit/sql_json_field_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/adapters/sql/sql_result_parser.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/security/crypto/reversible_crypto.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/oidc/crypto/rsa_keypair.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/oidc/tokens/token_issuer.cpp

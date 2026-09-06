@@ -70,11 +70,20 @@ Json SQLiteResultParser::columnToJson(const core::EntityField& field,
         return value;
     } else {
         const unsigned char* text = sqlite3_column_text(stmt, columnIndex);
-        if (text) {
-            return std::string(reinterpret_cast<const char*>(text));
-        } else {
-            return nullptr;
+        if (!text) return nullptr;
+        const std::string value(reinterpret_cast<const char*>(text));
+        if (field.type == "json") {
+            // Written with .dump() and never parsed back, so a json column
+            // came out as text. A workflow reading ${event.data.name} off a
+            // form submission got nothing: `data` was a string, so the
+            // dot-path had no object to walk into.
+            try {
+                return Json::parse(value);
+            } catch (const Json::parse_error&) {
+                return value;
+            }
         }
+        return value;
     }
 }
 
