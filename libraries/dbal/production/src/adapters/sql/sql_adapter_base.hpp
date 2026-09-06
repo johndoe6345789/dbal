@@ -111,6 +111,17 @@ protected:
     // unless a future internal-only caller explicitly opts in.
     Json rowToJson(const EntitySchema& schema, const SqlRow& row, bool includeSensitive = false) const;
     static std::string jsonValueToString(const Json& value);
+    /**
+     * A json column's text, back as the value it went in as.
+     *
+     * Public and static because it is a pure conversion with no connection
+     * behind it, and because it is where a whole class of bug lives: a
+     * type the schema declares but rowToJson does not decode surfaces as a
+     * string, and everything downstream quietly treats it as one.
+     */
+public:
+    static Json decodeJsonColumn(const std::string& value);
+protected:
 
     // Utility helpers (protected for dialect-specific overrides)
     static std::string joinFragments(const std::vector<std::string>& fragments, const std::string& separator);

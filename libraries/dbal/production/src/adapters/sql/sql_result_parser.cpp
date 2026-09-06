@@ -72,18 +72,6 @@ Json SqlResultParser::parseValue(const std::string& value, const EntityField& fi
         } else {
             return nullptr;
         }
-    } else if (field.type == "json") {
-        // Written with .dump() and never parsed back, so a json column came
-        // out as text. A workflow reading ${event.data.name} off a form
-        // submission got nothing at all: `data` was a string, so the
-        // dot-path had no object to walk into.
-        try {
-            return Json::parse(value);
-        } catch (const Json::parse_error&) {
-            // Text that will not parse is more useful as itself than as
-            // null -- it is at least visible to whoever has to fix it.
-            return value;
-        }
     } else {
         // String or other types
         return value;

@@ -175,6 +175,27 @@ std::vector<SqlParam> SqlAdapter::jsonToParams(const EntitySchema& schema, const
     return params;
 }
 
+/**
+ * A json column's text, back as the value it went in as.
+ *
+ * jsonValueToString writes an object with .dump(); without the matching
+ * parse a json column comes back as text. A workflow reading
+ * ${event.data.name} off a form submission got nothing at all -- `data`
+ * was a string, so the dot-path had no object to walk into, and the step
+ * quietly used its default instead of the visitor's answer.
+ *
+ * Text that will not parse stays itself: rows written before this, or by
+ * anything that put plain text in the column, are more useful visible
+ * than gone.
+ */
+Json SqlAdapter::decodeJsonColumn(const std::string& value) {
+    try {
+        return Json::parse(value);
+    } catch (const Json::parse_error&) {
+        return value;
+    }
+}
+
 Json SqlAdapter::rowToJson(const EntitySchema& schema, const SqlRow& row, bool includeSensitive) const {
     Json result;
     for (const auto& field : schema.fields) {
@@ -191,6 +212,8 @@ Json SqlAdapter::rowToJson(const EntitySchema& schema, const SqlRow& row, bool i
             } else {
                 result[field.name] = nullptr;
             }
+        } else if (field.type == "json" && !value.empty()) {
+            result[field.name] = decodeJsonColumn(value);
         } else {
             if (value.empty()) {
                 if (field.nullable && field.defaultValue) {

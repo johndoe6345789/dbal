@@ -27,6 +27,11 @@ struct SqlRow {
 /**
  * SQL Result Parser - Converts SQL query results to JSON
  *
+ * NOTE: nothing constructs this. The live path is SqlAdapter::rowToJson
+ * (sql_adapter_helpers.cpp), which does the same job independently -- so a
+ * fix made here changes no behaviour at all. Fixing this class instead of
+ * that one is a mistake worth making only once.
+ *
  * Handles:
  * - Row → JSON object conversion
  * - Type-aware value parsing (boolean, number, string)
@@ -68,14 +73,7 @@ public:
     static std::vector<std::pair<std::string, std::string>>
     jsonToParams(const EntitySchema& schema, const Json& data, const std::string& prepend_id = "");
 
-    /**
-     * One column's text, as the value its schema type says it is.
-     *
-     * Public because it is a pure conversion with no connection behind it,
-     * and because it is where a whole class of bug lives: a type the
-     * schema declares but this does not decode surfaces as a string, and
-     * everything downstream quietly treats it as one.
-     */
+private:
     static Json parseValue(const std::string& value, const EntityField& field);
 };
 

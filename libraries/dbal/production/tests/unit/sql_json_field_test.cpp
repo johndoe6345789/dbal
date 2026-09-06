@@ -2,35 +2,25 @@
  * @file sql_json_field_test.cpp
  * @brief A json column has to come back as the object it went in as.
  *
- * Writing dumps an object to text; reading never parsed it back, so every
- * json field surfaced as a string. The visible consequence was a workflow
- * reading ${event.data.name} off a form submission and getting nothing:
- * `data` was a string, so the dot-path had no object to walk into, and the
- * step silently used its default instead of the visitor's answer.
+ * jsonValueToString writes an object with .dump(); rowToJson never parsed
+ * it back, so every json field surfaced as text on the Postgres and MySQL
+ * path (SQLite has the same fix in its own parser).
+ *
+ * The visible consequence was a workflow reading ${event.data.name} off a
+ * form submission and getting nothing: `data` was a string, so the
+ * dot-path had no object to walk into, and the step silently used its
+ * default instead of the visitor's answer.
  */
 
 #include <gtest/gtest.h>
 
-#include "adapters/sql/sql_result_parser.hpp"
+#include "adapters/sql/sql_adapter_base.hpp"
 
-using dbal::adapters::EntityField;
-using dbal::adapters::sql::SqlResultParser;
-
-namespace {
-
-EntityField field(const std::string& type, bool required = true) {
-    EntityField f;
-    f.name     = "data";
-    f.type     = type;
-    f.required = required;
-    return f;
-}
-
-} // namespace
+using dbal::adapters::sql::SqlAdapter;
 
 TEST(SqlJsonField, RebuildsTheObjectThatWasStored) {
-    const nlohmann::json value = SqlResultParser::parseValue(
-        R"({"name":"Rosa","job":"Buckled rear wheel"})", field("json"));
+    const nlohmann::json value = SqlAdapter::decodeJsonColumn(
+        R"({"name":"Rosa","job":"Buckled rear wheel"})");
 
     ASSERT_TRUE(value.is_object());
     EXPECT_EQ(value["name"], "Rosa");
@@ -40,27 +30,26 @@ TEST(SqlJsonField, RebuildsTheObjectThatWasStored) {
 // ${event.data.name} is a dot-path, so `data` must be walkable.
 TEST(SqlJsonField, LetsADotPathReachAField) {
     const nlohmann::json value =
-        SqlResultParser::parseValue(R"({"name":"Rosa"})", field("json"));
+        SqlAdapter::decodeJsonColumn(R"({"name":"Rosa"})");
 
     ASSERT_TRUE(value.is_object());
     ASSERT_TRUE(value.contains("name"));
     EXPECT_EQ(value["name"].get<std::string>(), "Rosa");
 }
 
-TEST(SqlJsonField, RebuildsAnArrayToo) {
+TEST(SqlJsonField, RebuildsANestedObject) {
     const nlohmann::json value =
-        SqlResultParser::parseValue(R"(["a","b"])", field("json"));
+        SqlAdapter::decodeJsonColumn(R"({"a":{"b":"c"}})");
+
+    ASSERT_TRUE(value.is_object());
+    EXPECT_EQ(value["a"]["b"], "c");
+}
+
+TEST(SqlJsonField, RebuildsAnArrayToo) {
+    const nlohmann::json value = SqlAdapter::decodeJsonColumn(R"(["a","b"])");
 
     ASSERT_TRUE(value.is_array());
     EXPECT_EQ(value.size(), 2u);
-}
-
-TEST(SqlJsonField, KeepsAStringColumnAString) {
-    const nlohmann::json value =
-        SqlResultParser::parseValue(R"({"a":1})", field("string"));
-
-    ASSERT_TRUE(value.is_string());
-    EXPECT_EQ(value.get<std::string>(), R"({"a":1})");
 }
 
 /**
@@ -69,19 +58,15 @@ TEST(SqlJsonField, KeepsAStringColumnAString) {
  * and it is at least visible to whoever has to fix it.
  */
 TEST(SqlJsonField, FallsBackToTheTextWhenItWillNotParse) {
-    const nlohmann::json value = SqlResultParser::parseValue("not json", field("json"));
+    const nlohmann::json value = SqlAdapter::decodeJsonColumn("not json");
 
     ASSERT_TRUE(value.is_string());
     EXPECT_EQ(value.get<std::string>(), "not json");
 }
 
-TEST(SqlJsonField, LeavesOtherTypesAlone) {
-    EXPECT_TRUE(SqlResultParser::parseValue("1", field("boolean")).get<bool>());
-    EXPECT_EQ(SqlResultParser::parseValue("42", field("number")).get<int64_t>(),
-              42);
-}
-
-TEST(SqlJsonField, AnEmptyOptionalColumnIsStillNull) {
-    const nlohmann::json value = SqlResultParser::parseValue("", field("json", false));
-    EXPECT_TRUE(value.is_null());
+// A bare word is not JSON; a bare number is. Neither may throw.
+TEST(SqlJsonField, SurvivesOddButHarmlessText) {
+    EXPECT_TRUE(SqlAdapter::decodeJsonColumn("42").is_number());
+    EXPECT_TRUE(SqlAdapter::decodeJsonColumn("true").is_boolean());
+    EXPECT_TRUE(SqlAdapter::decodeJsonColumn("{oops").is_string());
 }

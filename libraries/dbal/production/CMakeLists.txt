@@ -230,10 +230,10 @@ if(BUILD_TESTING)
         # A json column has to come back as the object it went in as.
         # parseValue is pure -- no connection behind it -- so this needs the
         # one translation unit and no database.
+        # decodeJsonColumn is a pure static on SqlAdapter with no connection
+        # behind it, so this needs no adapter instance and no database.
         tests/unit/sql_json_field_test.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/adapters/sql/sql_result_parser.cpp
-        # jsonToParams calls into the type mapper, which is self-contained.
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/adapters/sql/sql_type_mapper.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/adapters/sql/sql_adapter_helpers.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/security/crypto/reversible_crypto.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/oidc/crypto/rsa_keypair.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/oidc/tokens/token_issuer.cpp
