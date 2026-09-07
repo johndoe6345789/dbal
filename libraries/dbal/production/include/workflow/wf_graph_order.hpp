@@ -1,6 +1,7 @@
 #pragma once
 #include <nlohmann/json.hpp>
 #include <string>
+#include <vector>
 #include <utility>
 #include <vector>
 
@@ -31,5 +32,23 @@ std::vector<std::string> topologicalOrder(
  * its own text, which is at least visible and fixable in the editor.
  */
 nlohmann::json decodeParam(const std::string& value, const std::string& type);
+
+/**
+ * Which of @p rows answers a submission from @p form.
+ *
+ * One naming that form wins over one naming none; one naming a different
+ * form does not answer at all. Drafts never answer.
+ *
+ * Without this distinction every workflow subscribed to
+ * FormSubmission.created answered every form on the tenant, and which of
+ * three ran came down to whichever the database returned first. A
+ * workflow naming no form still answers any of them -- that is what every
+ * workflow meant before the column existed, and narrowing them silently
+ * would stop ones that work today.
+ *
+ * Returns a null json when nothing answers.
+ */
+nlohmann::json bestForForm(const std::vector<nlohmann::json>& rows,
+                           const std::string& form);
 
 } // namespace dbal::workflow

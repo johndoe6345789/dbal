@@ -54,6 +54,13 @@
       "optional": true,
       "nullable": true
     },
+    "formName": {
+      "type": "string",
+      "description": "Which form this workflow is for, when its trigger is a form submission. Empty means any form -- which is what every workflow meant before this existed, and why three workflows on one tenant all answered the same submission.",
+      "optional": true,
+      "nullable": true,
+      "max_length": 120
+    },
     "isPublished": {
       "type": "boolean",
       "description": "Whether this workflow is published. Indexed on (tenantId, isPublished); raised by the workflow.published event.",

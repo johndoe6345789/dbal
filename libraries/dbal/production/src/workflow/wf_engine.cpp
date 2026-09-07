@@ -83,6 +83,12 @@ std::pair<std::string, std::string> splitEvent(const std::string& event_name) {
     return {event_name.substr(0, dot), event_name.substr(dot + 1)};
 }
 
+/** Which form a record came from, or empty when it is not a submission. */
+std::string formOf(const nlohmann::json& row) {
+    if (!row.contains("formName") || !row["formName"].is_string()) return {};
+    return row["formName"].get<std::string>();
+}
+
 } // namespace
 
 void WfEngine::invalidateTenantEvents() const {
@@ -160,8 +166,10 @@ nlohmann::json WfEngine::runNamedNow(const std::string& tenant,
                                      const std::string& trigger_event,
                                      const nlohmann::json& entity_data) const {
     try {
+        const std::string form = formOf(entity_data);
         dbal::Client client(client_config_);
-        auto loaded = loadTenantWorkflowNamed(client, tenant, named, trigger_event);
+        auto loaded =
+            loadTenantWorkflowNamed(client, tenant, named, trigger_event, form);
         if (!loaded) {
             spdlog::info("[workflow] {} asked for '{}': nothing published "
                          "under that name with trigger '{}'",
@@ -222,9 +230,12 @@ void WfEngine::dispatchAsync(const std::string& event_name,
                     && data_copy["workflow"].is_string())
                     named = data_copy["workflow"].get<std::string>();
 
-                auto loaded = named.empty()
-                    ? loadTenantWorkflow(client, tenant, trigger)
-                    : loadTenantWorkflowNamed(client, tenant, named, trigger);
+                const std::string form = formOf(data_copy);
+                auto loaded =
+                    named.empty()
+                        ? loadTenantWorkflow(client, tenant, trigger, form)
+                        : loadTenantWorkflowNamed(client, tenant, named,
+                                                  trigger, form);
                 if (!loaded) {
                     spdlog::info("[workflow] {} ran nothing{}", event_name,
                                  named.empty()

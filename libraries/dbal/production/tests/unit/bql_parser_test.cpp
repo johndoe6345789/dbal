@@ -468,3 +468,39 @@ TEST(BqlParser, PublishingAPageIsUnaffected) {
     EXPECT_EQ(r.sentence.kind, BqlSentence::Kind::Publish);
     EXPECT_EQ(r.sentence.path, "/about");
 }
+
+/**
+ * Naming the form is what stops every workflow on a tenant answering
+ * every form. Three workflows all subscribed to FormSubmission.created
+ * each claimed every submission, and which ran came down to whichever the
+ * database returned first.
+ */
+TEST(BqlParser, ScopesATriggerToOneForm) {
+    const auto r = parseSentence(
+        R"(run it when someone submits the "book-a-repair" form)");
+
+    ASSERT_TRUE(r.ok) << r.error;
+    EXPECT_EQ(r.sentence.kind, BqlSentence::Kind::Trigger);
+    EXPECT_EQ(r.sentence.event, "FormSubmission.created");
+    EXPECT_EQ(r.sentence.form, "book-a-repair");
+}
+
+// Naming no form still means any of them, as it always has.
+TEST(BqlParser, ATriggerWithNoFormNamesNone) {
+    const auto r = parseSentence("run it when someone submits a form");
+
+    ASSERT_TRUE(r.ok) << r.error;
+    EXPECT_TRUE(r.sentence.form.empty());
+}
+
+TEST(BqlParser, AFormNameHasToBeQuoted) {
+    const auto r = parseSentence(
+        "run it when someone submits the book-a-repair form");
+
+    EXPECT_FALSE(r.ok);
+    EXPECT_NE(r.error.find("quotes"), std::string::npos);
+}
+
+TEST(BqlParser, RefusesAFormNameWithNothingAfterIt) {
+    EXPECT_FALSE(parseSentence(R"(run it when someone submits the "x")").ok);
+}

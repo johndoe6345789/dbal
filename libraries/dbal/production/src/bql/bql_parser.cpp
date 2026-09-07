@@ -408,6 +408,28 @@ SentenceResult parseRunWhen(Cursor& c, const std::string& rawLine) {
     }
     c.next();
 
+    // `run it when someone submits the "book-a-repair" form` -- naming the
+    // form is what stops every workflow on a tenant answering every form.
+    if (isWord(c, "someone") && isWord(c, "submits", 1) && isWord(c, "the", 2)) {
+        const Token* formTok = c.peek(3);
+        if (formTok == nullptr || formTok->type != Token::Type::String) {
+            return fail("The form's name has to be in quotes, in: \"" +
+                        rawLine + "\"");
+        }
+        if (!isWord(c, "form", 4)) {
+            return fail("Missing \"form\" in: \"" + rawLine + "\"");
+        }
+        const std::string form = formTok->value;
+        for (int i = 0; i < 5; ++i) c.next();
+
+        SentenceResult r;
+        r.ok = true;
+        r.sentence.kind = BqlSentence::Kind::Trigger;
+        r.sentence.event = "FormSubmission.created";
+        r.sentence.form = form;
+        return r;
+    }
+
     const std::string phrase = consumeWordsUntil(c, {});
     const std::string lowered = toLower(phrase);
     if (lowered == "someone submits a form" || lowered == "a form is submitted") {
@@ -573,7 +595,9 @@ nlohmann::json toJson(const BqlSentence& sentence) {
             j = {{"kind", "workflow"}, {"name", sentence.name}};
             break;
         case BqlSentence::Kind::Trigger:
-            j = {{"kind", "trigger"}, {"event", sentence.event}};
+            j = {{"kind", "trigger"},
+                 {"event", sentence.event},
+                 {"form", sentence.form}};
             break;
         case BqlSentence::Kind::Step: {
             nlohmann::json attrs = nlohmann::json::array();

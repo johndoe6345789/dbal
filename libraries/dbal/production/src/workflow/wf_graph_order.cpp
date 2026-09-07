@@ -59,4 +59,33 @@ nlohmann::json decodeParam(const std::string& value, const std::string& type) {
     return nlohmann::json(value);
 }
 
+
+namespace {
+
+bool isDraft(const nlohmann::json& row) {
+    // A draft is a work in progress, not something a visitor's submission
+    // should set running.
+    return row.contains("isPublished") && row["isPublished"].is_boolean()
+           && !row["isPublished"].get<bool>();
+}
+
+std::string formNameOf(const nlohmann::json& row) {
+    if (!row.contains("formName") || !row["formName"].is_string()) return {};
+    return row["formName"].get<std::string>();
+}
+
+} // namespace
+
+nlohmann::json bestForForm(const std::vector<nlohmann::json>& rows,
+                           const std::string& form) {
+    nlohmann::json anyForm;
+    for (const auto& row : rows) {
+        if (isDraft(row)) continue;
+        const std::string wants = formNameOf(row);
+        if (!wants.empty() && wants == form) return row;   // exact wins
+        if (wants.empty() && anyForm.is_null()) anyForm = row;
+    }
+    return anyForm;
+}
+
 } // namespace dbal::workflow

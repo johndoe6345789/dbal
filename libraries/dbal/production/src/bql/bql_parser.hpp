@@ -54,6 +54,7 @@ struct BqlSentence {
     std::string path;                        // publish (the route)
     std::string stepName;                    // step (the step's own name)
     std::string event;                       // trigger ("<Entity>.created")
+    std::string form;                        // trigger (which form, or empty)
 };
 
 struct SentenceResult {

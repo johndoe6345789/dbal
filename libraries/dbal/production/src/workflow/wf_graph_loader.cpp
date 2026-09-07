@@ -39,13 +39,17 @@ std::string str(const nlohmann::json& row, const char* key) {
 
 namespace {
 
+bool isDraft(const nlohmann::json& row) {
+    // A draft is a work in progress, not something a visitor's submission
+    // should set running.
+    return row.contains("isPublished") && row["isPublished"].is_boolean()
+           && !row["isPublished"].get<bool>();
+}
+
 /** The published row among @p rows, or null when they are all drafts. */
 nlohmann::json firstPublished(const std::vector<nlohmann::json>& rows) {
     for (const auto& row : rows) {
-        // A draft is a work in progress, not something a visitor's
-        // submission should set running.
-        if (row.contains("isPublished") && row["isPublished"].is_boolean()
-            && !row["isPublished"].get<bool>()) continue;
+        if (isDraft(row)) continue;
         return row;
     }
     return nlohmann::json();
@@ -133,24 +137,29 @@ std::optional<LoadedWorkflow> buildWorkflow(dbal::Client& client,
 
 std::optional<LoadedWorkflow> loadTenantWorkflow(dbal::Client& client,
                                                  const std::string& tenant,
-                                                 const std::string& trigger_event) {
+                                                 const std::string& trigger_event,
+                                                 const std::string& form) {
     ListOptions opts;
     opts.filter["tenantId"]     = tenant;
     opts.filter["triggerEvent"] = trigger_event;
-    opts.limit = 10;
+    // Matched here rather than in the query: a workflow naming no form
+    // answers any of them, and one filter cannot ask for "this form or
+    // nothing" without two round trips.
+    opts.limit = 100;
     auto found = client.listEntities("Workflow", opts);
     if (!found.isOk()) {
         spdlog::warn("[workflow] could not look up workflows for {}.{}: {}",
                      tenant, trigger_event, std::string(found.error().what()));
         return std::nullopt;
     }
-    return buildWorkflow(client, tenant, firstPublished(found.value().items));
+    return buildWorkflow(client, tenant, bestForForm(found.value().items, form));
 }
 
 std::optional<LoadedWorkflow> loadTenantWorkflowNamed(dbal::Client& client,
                                                       const std::string& tenant,
                                                       const std::string& named,
-                                                      const std::string& trigger_event) {
+                                                      const std::string& trigger_event,
+                                                      const std::string& form) {
     // A button says which workflow it runs, so the row is found by that
     // name rather than by what is subscribed. Tried as an id first: a name
     // is what someone types and can collide, an id cannot.
@@ -168,6 +177,18 @@ std::optional<LoadedWorkflow> loadTenantWorkflowNamed(dbal::Client& client,
         if (!found.isOk()) continue;
         auto chosen = firstPublished(found.value().items);
         if (chosen.is_null()) continue;
+        // A workflow that named a form meant it. A button pointing at it
+        // from some other form is a mistake in the page, and running it
+        // anyway would make the scope advisory rather than real.
+        const std::string wants =
+            chosen.contains("formName") && chosen["formName"].is_string()
+                ? chosen["formName"].get<std::string>()
+                : std::string();
+        if (!wants.empty() && !form.empty() && wants != form) {
+            spdlog::warn("[workflow] {} asked for '{}', which is for the "
+                         "'{}' form, not '{}'", tenant, named, wants, form);
+            return std::nullopt;
+        }
         return buildWorkflow(client, tenant, chosen);
     }
     spdlog::warn("[workflow] {} asked for workflow '{}', which is not "

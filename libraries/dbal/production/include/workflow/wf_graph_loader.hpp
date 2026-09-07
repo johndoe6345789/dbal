@@ -36,9 +36,18 @@ struct LoadedWorkflow {
  * Never throws: a workflow that cannot be read must not take down the write
  * that triggered it.
  */
+/**
+ * @param form Which form the submission came from. A workflow naming that
+ *             form wins over one naming none; one naming a different form
+ *             does not answer at all. Without this every workflow
+ *             subscribed to FormSubmission.created answered every form on
+ *             the tenant, and which of three ran came down to whichever
+ *             the database happened to return first.
+ */
 std::optional<LoadedWorkflow> loadTenantWorkflow(dbal::Client& client,
                                                  const std::string& tenant,
-                                                 const std::string& trigger_event);
+                                                 const std::string& trigger_event,
+                                                 const std::string& form);
 
 /**
  * The workflow @p named, if it has opted in to @p trigger_event.
@@ -63,6 +72,7 @@ std::optional<LoadedWorkflow> loadTenantWorkflow(dbal::Client& client,
 std::optional<LoadedWorkflow> loadTenantWorkflowNamed(dbal::Client& client,
                                                       const std::string& tenant,
                                                       const std::string& named,
-                                                      const std::string& trigger_event);
+                                                      const std::string& trigger_event,
+                                                      const std::string& form);
 
 } // namespace dbal::workflow
