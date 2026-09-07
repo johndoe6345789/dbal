@@ -40,4 +40,22 @@ std::optional<LoadedWorkflow> loadTenantWorkflow(dbal::Client& client,
                                                  const std::string& tenant,
                                                  const std::string& trigger_event);
 
+/**
+ * The workflow @p named, whatever it is subscribed to.
+ *
+ * A button can say which workflow it runs rather than leaving it to what
+ * the workflow listens for. That is the difference between a page that
+ * names its behaviour and one where the connection lives somewhere else
+ * entirely -- so a workflow found this way ignores triggerEvent.
+ *
+ * @p named is matched against the id first and then the name: a name is
+ * what someone types and can collide, an id cannot. Drafts are skipped.
+ * Returns nullopt when the tenant has published nothing by that name,
+ * which is logged -- a button pointing at a workflow that is not there
+ * must not fail silently.
+ */
+std::optional<LoadedWorkflow> loadTenantWorkflowNamed(dbal::Client& client,
+                                                      const std::string& tenant,
+                                                      const std::string& named);
+
 } // namespace dbal::workflow

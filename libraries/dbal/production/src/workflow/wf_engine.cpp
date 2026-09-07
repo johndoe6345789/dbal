@@ -80,6 +80,7 @@ void WfEngine::refreshTenantEvents() const {
     }
 
     std::unordered_set<std::string> found;
+    std::unordered_set<std::string> tenants;
     try {
         dbal::Client client(client_config_);
         ListOptions opts;
@@ -87,16 +88,18 @@ void WfEngine::refreshTenantEvents() const {
         auto result = client.listEntities("Workflow", opts);
         if (result.isOk()) {
             for (const auto& row : result.value().items) {
-                if (!row.contains("triggerEvent") || !row["triggerEvent"].is_string())
-                    continue;
-                const auto trigger = row["triggerEvent"].get<std::string>();
-                if (trigger.empty()) continue;
                 if (row.contains("isPublished") && row["isPublished"].is_boolean()
                     && !row["isPublished"].get<bool>()) continue;
                 std::string tenant = "system";
                 if (row.contains("tenantId") && row["tenantId"].is_string()
                     && !row["tenantId"].get<std::string>().empty())
                     tenant = row["tenantId"].get<std::string>();
+                tenants.insert(tenant);
+
+                if (!row.contains("triggerEvent") || !row["triggerEvent"].is_string())
+                    continue;
+                const auto trigger = row["triggerEvent"].get<std::string>();
+                if (trigger.empty()) continue;
                 found.insert(tenant + "." + trigger);
             }
         } else {
@@ -112,7 +115,8 @@ void WfEngine::refreshTenantEvents() const {
     }
 
     std::lock_guard<std::mutex> guard(tenant_events_lock_);
-    tenant_events_      = std::move(found);
+    tenant_events_          = std::move(found);
+    tenants_with_workflows_ = std::move(tenants);
     tenant_events_at_   = std::chrono::steady_clock::now();
     tenant_events_loaded_ = true;
 }
@@ -121,7 +125,15 @@ bool WfEngine::hasEvent(const std::string& event_name) const {
     if (event_map_.count(event_name) > 0) return true;
     refreshTenantEvents();
     std::lock_guard<std::mutex> guard(tenant_events_lock_);
-    return tenant_events_.count(event_name) > 0;
+    if (tenant_events_.count(event_name) > 0) return true;
+    // A record can name the workflow it wants, and what a record says
+    // cannot be known before it is written. So a tenant holding any
+    // published workflow is let through and dispatchAsync decides -- it
+    // returns immediately when the record names none and nothing is
+    // subscribed. Tenants with no workflows at all, which is most of
+    // them, still cost nothing.
+    const auto tenant = splitEvent(event_name).first;
+    return !tenant.empty() && tenants_with_workflows_.count(tenant) > 0;
 }
 
 void WfEngine::dispatchAsync(const std::string& event_name,
@@ -153,9 +165,23 @@ void WfEngine::dispatchAsync(const std::string& event_name,
                 // Published from the God Panel rather than shipped in this
                 // image: same executor, nodes rebuilt from rows.
                 const auto [tenant, trigger] = splitEvent(event_name);
-                auto loaded = loadTenantWorkflow(client, tenant, trigger);
+                // A record may name the workflow it wants. That is a
+                // button saying what it does, rather than the connection
+                // living in what some workflow happens to subscribe to --
+                // so a named one wins over the subscription outright.
+                std::string named;
+                if (data_copy.contains("workflow")
+                    && data_copy["workflow"].is_string())
+                    named = data_copy["workflow"].get<std::string>();
+
+                auto loaded = named.empty()
+                    ? loadTenantWorkflow(client, tenant, trigger)
+                    : loadTenantWorkflowNamed(client, tenant, named);
                 if (!loaded) {
-                    spdlog::info("[workflow] {} has no published workflow", event_name);
+                    spdlog::info("[workflow] {} ran nothing{}", event_name,
+                                 named.empty()
+                                     ? std::string(": no published workflow")
+                                     : ": no workflow named '" + named + "'");
                     return;
                 }
                 exec_copy.executeNodes(loaded->nodes, loaded->name, ctx, client);

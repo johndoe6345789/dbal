@@ -37,31 +37,26 @@ std::string str(const nlohmann::json& row, const char* key) {
 
 } // namespace
 
-std::optional<LoadedWorkflow> loadTenantWorkflow(dbal::Client& client,
-                                                 const std::string& tenant,
-                                                 const std::string& trigger_event) {
-    try {
-        ListOptions opts;
-        opts.filter["tenantId"]     = tenant;
-        opts.filter["triggerEvent"] = trigger_event;
-        opts.limit = 10;
-        auto found = client.listEntities("Workflow", opts);
-        if (!found.isOk()) {
-            spdlog::warn("[workflow] could not look up workflows for {}.{}: {}",
-                         tenant, trigger_event,
-                         std::string(found.error().what()));
-            return std::nullopt;
-        }
+namespace {
 
-        nlohmann::json chosen;
-        for (const auto& row : found.value().items) {
-            // A draft is a work in progress, not something a visitor's
-            // submission should set running.
-            if (row.contains("isPublished") && row["isPublished"].is_boolean()
-                && !row["isPublished"].get<bool>()) continue;
-            chosen = row;
-            break;
-        }
+/** The published row among @p rows, or null when they are all drafts. */
+nlohmann::json firstPublished(const std::vector<nlohmann::json>& rows) {
+    for (const auto& row : rows) {
+        // A draft is a work in progress, not something a visitor's
+        // submission should set running.
+        if (row.contains("isPublished") && row["isPublished"].is_boolean()
+            && !row["isPublished"].get<bool>()) continue;
+        return row;
+    }
+    return nlohmann::json();
+}
+
+} // namespace
+
+std::optional<LoadedWorkflow> buildWorkflow(dbal::Client& client,
+                                            const std::string& tenant,
+                                            const nlohmann::json& chosen) {
+    try {
         if (chosen.is_null()) return std::nullopt;
 
         LoadedWorkflow wf;
@@ -127,13 +122,51 @@ std::optional<LoadedWorkflow> loadTenantWorkflow(dbal::Client& client,
         }
         return wf;
     } catch (const std::exception& e) {
-        spdlog::error("[workflow] loading {}.{} failed: {}", tenant,
-                      trigger_event, e.what());
+        spdlog::error("[workflow] loading a workflow for {} failed: {}",
+                      tenant, e.what());
         return std::nullopt;
     } catch (...) {
-        spdlog::error("[workflow] loading {}.{} failed", tenant, trigger_event);
+        spdlog::error("[workflow] loading a workflow for {} failed", tenant);
         return std::nullopt;
     }
+}
+
+std::optional<LoadedWorkflow> loadTenantWorkflow(dbal::Client& client,
+                                                 const std::string& tenant,
+                                                 const std::string& trigger_event) {
+    ListOptions opts;
+    opts.filter["tenantId"]     = tenant;
+    opts.filter["triggerEvent"] = trigger_event;
+    opts.limit = 10;
+    auto found = client.listEntities("Workflow", opts);
+    if (!found.isOk()) {
+        spdlog::warn("[workflow] could not look up workflows for {}.{}: {}",
+                     tenant, trigger_event, std::string(found.error().what()));
+        return std::nullopt;
+    }
+    return buildWorkflow(client, tenant, firstPublished(found.value().items));
+}
+
+std::optional<LoadedWorkflow> loadTenantWorkflowNamed(dbal::Client& client,
+                                                      const std::string& tenant,
+                                                      const std::string& named) {
+    // A button says which workflow it runs, so the row is found by that
+    // name rather than by what it is subscribed to. Tried as an id first:
+    // a name is what someone types and can collide, an id cannot.
+    for (const char* column : {"id", "name"}) {
+        ListOptions opts;
+        opts.filter["tenantId"] = tenant;
+        opts.filter[column]     = named;
+        opts.limit = 10;
+        auto found = client.listEntities("Workflow", opts);
+        if (!found.isOk()) continue;
+        auto chosen = firstPublished(found.value().items);
+        if (chosen.is_null()) continue;
+        return buildWorkflow(client, tenant, chosen);
+    }
+    spdlog::warn("[workflow] {} asked for workflow '{}', which is not "
+                 "published under that tenant", tenant, named);
+    return std::nullopt;
 }
 
 } // namespace dbal::workflow

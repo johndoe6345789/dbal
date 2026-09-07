@@ -58,6 +58,9 @@ private:
     // "<tenant>.<Entity>.created" for every published tenant workflow.
     mutable std::mutex tenant_events_lock_;
     mutable std::unordered_set<std::string> tenant_events_;
+    // Tenants holding any published workflow: a record may name one, and
+    // what it names cannot be known before the write.
+    mutable std::unordered_set<std::string> tenants_with_workflows_;
     mutable std::chrono::steady_clock::time_point tenant_events_at_{};
     mutable bool tenant_events_loaded_ = false;
 };

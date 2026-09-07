@@ -28,6 +28,13 @@
       "max_length": 255,
       "description": "The page path the form was submitted from"
     },
+    "workflow": {
+      "type": "string",
+      "description": "The workflow this submission asks for, by name or id. Set when a button says which workflow it runs, rather than leaving it to whatever is subscribed to FormSubmission.created. Empty means fall back to the subscription.",
+      "optional": true,
+      "nullable": true,
+      "max_length": 200
+    },
     "data": {
       "type": "json",
       "required": true,
@@ -49,13 +56,32 @@
     }
   },
   "indexes": [
-    { "fields": ["tenantId", "formName"] },
-    { "fields": ["tenantId", "createdAt"] }
+    {
+      "fields": [
+        "tenantId",
+        "formName"
+      ]
+    },
+    {
+      "fields": [
+        "tenantId",
+        "createdAt"
+      ]
+    }
   ],
   "acl": {
-    "create": { "public": true },
-    "read": { "admin": true, "self": true },
-    "update": { "admin": true },
-    "delete": { "admin": true }
+    "create": {
+      "public": true
+    },
+    "read": {
+      "admin": true,
+      "self": true
+    },
+    "update": {
+      "admin": true
+    },
+    "delete": {
+      "admin": true
+    }
   }
 }
