@@ -298,6 +298,18 @@ SentenceResult parseApply(Cursor& c, const std::string& rawLine) {
  *  one word, so quoting it is a preference rather than a requirement. */
 SentenceResult parsePublish(Cursor& c, const std::string& rawLine) {
     c.next();
+    // `publish the workflow` -- no path, because a workflow has none.
+    if (isWord(c, "the")) {
+        c.next();
+        if (!isWord(c, "workflow")) {
+            return fail("Could not read: \"" + rawLine + "\"");
+        }
+        c.next();
+        SentenceResult r;
+        r.ok = true;
+        r.sentence.kind = BqlSentence::Kind::PublishWorkflow;
+        return r;
+    }
     if (isWord(c, "this")) c.next();
 
     std::string title;
@@ -329,6 +341,9 @@ SentenceResult parsePublish(Cursor& c, const std::string& rawLine) {
 }
 
 
+// Defined below, next to the other workflow forms; `start` reaches it.
+SentenceResult parseWorkflowStart(Cursor& c, const std::string& rawLine);
+
 /** `start a new page` -- everything after this line builds a page of its
  *  own rather than adding to whatever the editor already had loaded.
  *  Without it a script that ends in `publish this at /classes` quietly
@@ -339,12 +354,101 @@ SentenceResult parseClear(Cursor& c, const std::string& rawLine) {
     skipArticle(c);
     if (!isWord(c, "new")) return fail("Could not read: \"" + rawLine + "\"");
     c.next();
+    // `start a new workflow ...` shares this opening: in both, everything
+    // after the line belongs to the thing just started.
+    if (isWord(c, "workflow")) return parseWorkflowStart(c, rawLine);
     if (!isWord(c, "page")) return fail("Could not read: \"" + rawLine + "\"");
     c.next();
 
     SentenceResult r;
     r.ok = true;
     r.sentence.kind = BqlSentence::Kind::Clear;
+    return r;
+}
+
+
+/**
+ * `start a new workflow called "Log a repair booking"` -- a script that
+ * builds a workflow rather than a page.
+ *
+ * Shares `start` with `start a new page`, which is what the word means in
+ * both: everything after this line belongs to the thing just named.
+ */
+SentenceResult parseWorkflowStart(Cursor& c, const std::string& rawLine) {
+    if (!isWord(c, "workflow")) return fail("Could not read: \"" + rawLine + "\"");
+    c.next();
+    if (!isWord(c, "called")) {
+        return fail("Missing \"called <name>\" in: \"" + rawLine + "\"");
+    }
+    c.next();
+    const Token* nameTok = c.next();
+    if (nameTok == nullptr || nameTok->type != Token::Type::String) {
+        return fail("The workflow's name has to be in quotes, in: \"" + rawLine + "\"");
+    }
+
+    SentenceResult r;
+    r.ok = true;
+    r.sentence.kind = BqlSentence::Kind::Workflow;
+    r.sentence.name = nameTok->value;
+    return r;
+}
+
+/**
+ * `run it when someone submits a form` -- what sets the workflow going.
+ *
+ * The phrases are the ones the Workflows tab already offers, word for
+ * word, so the two ways of saying the same thing cannot drift into
+ * meaning different things.
+ */
+SentenceResult parseRunWhen(Cursor& c, const std::string& rawLine) {
+    c.next();
+    if (isWord(c, "it")) c.next();
+    if (!isWord(c, "when")) {
+        return fail("Missing \"when\" in: \"" + rawLine + "\"");
+    }
+    c.next();
+
+    const std::string phrase = consumeWordsUntil(c, {});
+    const std::string lowered = toLower(phrase);
+    if (lowered == "someone submits a form" || lowered == "a form is submitted") {
+        SentenceResult r;
+        r.ok = true;
+        r.sentence.kind = BqlSentence::Kind::Trigger;
+        r.sentence.event = "FormSubmission.created";
+        return r;
+    }
+    if (lowered == "someone joins" || lowered == "someone signs up") {
+        SentenceResult r;
+        r.ok = true;
+        r.sentence.kind = BqlSentence::Kind::Trigger;
+        r.sentence.event = "User.created";
+        return r;
+    }
+    return fail("Don't know when \"" + phrase +
+                "\" is. Try \"someone submits a form\" or \"someone joins\".");
+}
+
+/**
+ * `then Write a note to the log with message of "..."` -- one step.
+ *
+ * The step's name is read exactly as a block's is, because the shape is
+ * identical: a multi-word name followed by optional `with <field> of
+ * <value>` pairs. Which names are real is the client's business, the same
+ * way block names are -- this parser has never known what a Heading 1 is
+ * either.
+ */
+SentenceResult parseThen(Cursor& c, const std::string& rawLine) {
+    c.next();
+    auto clause = parseAddClause(c);
+    if (!clause.has_value() || clause->blockName.empty()) {
+        return fail("Could not read the step in: \"" + rawLine + "\"");
+    }
+
+    SentenceResult r;
+    r.ok = true;
+    r.sentence.kind = BqlSentence::Kind::Step;
+    r.sentence.stepName = clause->blockName;
+    r.sentence.attrs = clause->attrs;
     return r;
 }
 
@@ -368,6 +472,8 @@ SentenceResult parseSentence(const std::string& rawLine) {
         if (isWord(c, "give")) return parseGive(c, rawLine);
         if (isWord(c, "inside")) return parseInsideAdd(c, rawLine);
         if (isWord(c, "add")) return parseAdd(c, rawLine);
+        if (isWord(c, "run")) return parseRunWhen(c, rawLine);
+        if (isWord(c, "then")) return parseThen(c, rawLine);
         return fail("Didn't understand: \"" + rawLine + "\"");
     }();
 
@@ -462,6 +568,24 @@ nlohmann::json toJson(const BqlSentence& sentence) {
             break;
         case BqlSentence::Kind::Clear:
             j = {{"kind", "clear"}};
+            break;
+        case BqlSentence::Kind::Workflow:
+            j = {{"kind", "workflow"}, {"name", sentence.name}};
+            break;
+        case BqlSentence::Kind::Trigger:
+            j = {{"kind", "trigger"}, {"event", sentence.event}};
+            break;
+        case BqlSentence::Kind::Step: {
+            nlohmann::json attrs = nlohmann::json::array();
+            for (const auto& a : sentence.attrs)
+                attrs.push_back({{"key", a.key}, {"value", a.value}});
+            j = {{"kind", "step"},
+                 {"stepName", sentence.stepName},
+                 {"attrs", attrs}};
+            break;
+        }
+        case BqlSentence::Kind::PublishWorkflow:
+            j = {{"kind", "publishWorkflow"}};
             break;
         case BqlSentence::Kind::Publish: {
             j = {{"kind", "publish"}, {"path", sentence.path}};

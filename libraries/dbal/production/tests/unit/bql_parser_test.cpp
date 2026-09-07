@@ -360,3 +360,111 @@ TEST(BqlScript, BuildsTheWholeCommunityDarkroomHomepageInOneScript) {
     EXPECT_EQ(r.sentences.size(), 10u);
     EXPECT_EQ(r.sentences.back().kind, BqlSentence::Kind::Class);
 }
+
+/**
+ * A script builds either a page or a workflow. The workflow half exists
+ * because dragging boxes on a canvas is the slowest way to say "when a
+ * form arrives, write a line to the log" -- and the sentences are the
+ * same shape either way, so nobody has to learn a second language.
+ */
+TEST(BqlParser, StartsAWorkflowByName) {
+    const auto r = parseSentence(R"(start a new workflow called "Log a repair booking")");
+
+    ASSERT_TRUE(r.ok) << r.error;
+    EXPECT_EQ(r.sentence.kind, BqlSentence::Kind::Workflow);
+    EXPECT_EQ(r.sentence.name, "Log a repair booking");
+}
+
+TEST(BqlParser, AWorkflowHasToBeNamed) {
+    const auto r = parseSentence("start a new workflow");
+
+    EXPECT_FALSE(r.ok);
+    EXPECT_NE(r.error.find("called"), std::string::npos);
+}
+
+// `start a new page` still means what it did.
+TEST(BqlParser, StartingAPageIsUnaffected) {
+    const auto r = parseSentence("start a new page");
+
+    ASSERT_TRUE(r.ok) << r.error;
+    EXPECT_EQ(r.sentence.kind, BqlSentence::Kind::Clear);
+}
+
+TEST(BqlParser, ReadsWhatSetsAWorkflowGoing) {
+    for (const char* line : {"run it when someone submits a form",
+                             "run when a form is submitted"}) {
+        const auto r = parseSentence(line);
+        ASSERT_TRUE(r.ok) << line << ": " << r.error;
+        EXPECT_EQ(r.sentence.kind, BqlSentence::Kind::Trigger);
+        EXPECT_EQ(r.sentence.event, "FormSubmission.created");
+    }
+}
+
+TEST(BqlParser, ReadsJoiningAsATrigger) {
+    const auto r = parseSentence("run it when someone joins");
+
+    ASSERT_TRUE(r.ok) << r.error;
+    EXPECT_EQ(r.sentence.event, "User.created");
+}
+
+/**
+ * A trigger nobody implements is refused by name rather than accepted and
+ * dropped: a workflow that silently never runs is the worst outcome here.
+ */
+TEST(BqlParser, RefusesATriggerItDoesNotKnow) {
+    const auto r = parseSentence("run it when the moon is full");
+
+    EXPECT_FALSE(r.ok);
+    EXPECT_NE(r.error.find("the moon is full"), std::string::npos);
+}
+
+TEST(BqlParser, ReadsAStepAndItsParameters) {
+    const auto r = parseSentence(
+        R"(then Write a note to the log with message of "Booked")");
+
+    ASSERT_TRUE(r.ok) << r.error;
+    EXPECT_EQ(r.sentence.kind, BqlSentence::Kind::Step);
+    EXPECT_EQ(r.sentence.stepName, "Write a note to the log");
+    ASSERT_EQ(r.sentence.attrs.size(), 1u);
+    EXPECT_EQ(r.sentence.attrs[0].key, "message");
+    EXPECT_EQ(r.sentence.attrs[0].value, "Booked");
+}
+
+TEST(BqlParser, ReadsAStepWithSeveralParameters) {
+    const auto r = parseSentence(
+        R"(then Only carry on if with value of "${event.data.job}", is of "contains", other of "urgent")");
+
+    ASSERT_TRUE(r.ok) << r.error;
+    EXPECT_EQ(r.sentence.stepName, "Only carry on if");
+    ASSERT_EQ(r.sentence.attrs.size(), 3u);
+    EXPECT_EQ(r.sentence.attrs[2].value, "urgent");
+}
+
+// Which step names are real is the client's business, the same way block
+// names are -- this parser has never known what a Heading 1 is either.
+TEST(BqlParser, DoesNotJudgeWhetherAStepExists) {
+    const auto r = parseSentence("then Frobnicate the widget");
+
+    ASSERT_TRUE(r.ok) << r.error;
+    EXPECT_EQ(r.sentence.stepName, "Frobnicate the widget");
+}
+
+TEST(BqlParser, RefusesAStepWithNoName) {
+    EXPECT_FALSE(parseSentence("then").ok);
+}
+
+TEST(BqlParser, PublishesAWorkflowWithoutAPath) {
+    const auto r = parseSentence("publish the workflow");
+
+    ASSERT_TRUE(r.ok) << r.error;
+    EXPECT_EQ(r.sentence.kind, BqlSentence::Kind::PublishWorkflow);
+}
+
+// The page form takes a path and still does.
+TEST(BqlParser, PublishingAPageIsUnaffected) {
+    const auto r = parseSentence(R"(publish this as "About" at /about)");
+
+    ASSERT_TRUE(r.ok) << r.error;
+    EXPECT_EQ(r.sentence.kind, BqlSentence::Kind::Publish);
+    EXPECT_EQ(r.sentence.path, "/about");
+}

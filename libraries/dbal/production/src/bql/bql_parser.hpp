@@ -23,7 +23,22 @@ struct BqlAttr {
 };
 
 struct BqlSentence {
-    enum class Kind { Add, Give, Style, Class, Publish, Clear };
+    enum class Kind {
+        Add,
+        Give,
+        Style,
+        Class,
+        Publish,
+        Clear,
+        // A script builds either a page or a workflow. These four are the
+        // workflow half: dragging boxes on a canvas is the slowest way to
+        // say "when a form arrives, write a line to the log", and it is
+        // the same sentences either way.
+        Workflow,         // start a new workflow called "..."
+        Trigger,          // run it when someone submits a form
+        Step,             // then <step name> [with <field> of <value>, ...]
+        PublishWorkflow,  // publish the workflow
+    };
     Kind kind = Kind::Add;
     int line = 0;  // 1-based source line, set by parseScript
 
@@ -37,6 +52,8 @@ struct BqlSentence {
                                              // publish (the page title)
     std::vector<std::string> names;          // class (the class names applied)
     std::string path;                        // publish (the route)
+    std::string stepName;                    // step (the step's own name)
+    std::string event;                       // trigger ("<Entity>.created")
 };
 
 struct SentenceResult {
