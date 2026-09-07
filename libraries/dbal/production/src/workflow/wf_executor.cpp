@@ -1,4 +1,5 @@
 #include "wf_executor.hpp"
+#include "workflow/wf_stop.hpp"
 #include <fstream>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
@@ -58,6 +59,13 @@ void WfExecutor::executeNodes(const std::vector<WfNode>& nodes,
         try {
             it->second->execute(resolved, ctx, client);
             spdlog::debug("[workflow] step {}/{} '{}' ok", i + 1, nodes.size(), node.type);
+        } catch (const WfStop& stop) {
+            // A workflow deciding it is done, not failing. Logged at info
+            // and returned from: treating it as an error would train
+            // everyone to ignore the errors that matter.
+            spdlog::info("[workflow] {} stopped at step {}/{}: {}", label,
+                         i + 1, nodes.size(), stop.what());
+            return;
         } catch (const std::exception& e) {
             spdlog::error("[workflow] step '{}' (id={}) failed: {}", node.type, node.id, e.what());
             throw;

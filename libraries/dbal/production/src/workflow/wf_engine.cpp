@@ -7,6 +7,10 @@
 #include "steps/entity_list_step.hpp"
 #include "steps/var_set_step.hpp"
 #include "steps/log_step.hpp"
+#include "steps/entity_update_step.hpp"
+#include "steps/entity_delete_step.hpp"
+#include "steps/entity_count_step.hpp"
+#include "steps/stop_unless_step.hpp"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -24,6 +28,10 @@ WfEngine::WfEngine(const dbal::ClientConfig& client_config)
     executor_.registerStep(std::make_shared<steps::EntityListStep>());
     executor_.registerStep(std::make_shared<steps::VarSetStep>());
     executor_.registerStep(std::make_shared<steps::LogStep>());
+    executor_.registerStep(std::make_shared<steps::EntityUpdateStep>());
+    executor_.registerStep(std::make_shared<steps::EntityDeleteStep>());
+    executor_.registerStep(std::make_shared<steps::EntityCountStep>());
+    executor_.registerStep(std::make_shared<steps::StopUnlessStep>());
 }
 
 void WfEngine::loadConfig(const std::string& json_path) {

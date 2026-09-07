@@ -227,6 +227,10 @@ if(BUILD_TESTING)
         # drag in dbal::Client and an adapter for a test that needs neither.
         tests/unit/wf_graph_order_test.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workflow/wf_graph_order.cpp
+        # The decision behind dbal.stop.unless. Pure, so no client and no
+        # database -- same reason as the ordering above.
+        tests/unit/wf_compare_test.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/workflow/wf_compare.cpp
         # A json column has to come back as the object it went in as.
         # parseValue is pure -- no connection behind it -- so this needs the
         # one translation unit and no database.
