@@ -47,6 +47,24 @@ public:
     /** Forget the cached tenant triggers, e.g. after a Workflow is written. */
     void invalidateTenantEvents() const;
 
+    /**
+     * Run @p named now, and hand back what it wants the page to do.
+     *
+     * dispatchAsync is fire-and-forget by design -- a subscription runs
+     * after the response has gone. A record that *names* its workflow is
+     * a different thing: somebody clicked and is waiting, and the whole
+     * point of the page.* steps is that their result comes back. So this
+     * one runs on the caller's thread and returns the effect list.
+     *
+     * Returns an empty array when nothing ran, which is also what a
+     * workflow with no page steps returns -- the caller cannot tell the
+     * difference and does not need to.
+     */
+    nlohmann::json runNamedNow(const std::string& tenant,
+                               const std::string& named,
+                               const std::string& trigger_event,
+                               const nlohmann::json& entity_data) const;
+
 private:
     /** Refill tenant_events_ if it has gone stale. */
     void refreshTenantEvents() const;

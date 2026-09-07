@@ -1,5 +1,6 @@
 #include "wf_engine.hpp"
 #include "dbal/core/types.hpp"
+#include "workflow/wf_effects.hpp"
 #include "steps/uuid_step.hpp"
 #include "steps/timestamp_step.hpp"
 #include "steps/entity_create_step.hpp"
@@ -11,6 +12,7 @@
 #include "steps/entity_delete_step.hpp"
 #include "steps/entity_count_step.hpp"
 #include "steps/stop_unless_step.hpp"
+#include "steps/page_steps.hpp"
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -32,6 +34,15 @@ WfEngine::WfEngine(const dbal::ClientConfig& client_config)
     executor_.registerStep(std::make_shared<steps::EntityDeleteStep>());
     executor_.registerStep(std::make_shared<steps::EntityCountStep>());
     executor_.registerStep(std::make_shared<steps::StopUnlessStep>());
+    // page.* steps record what they want done rather than doing it: the
+    // DOM is in somebody's browser, not here. The list comes back in the
+    // response for the page to apply.
+    executor_.registerStep(steps::pageTextStep());
+    executor_.registerStep(steps::pageShowStep());
+    executor_.registerStep(steps::pageHideStep());
+    executor_.registerStep(steps::pageClassStep());
+    executor_.registerStep(steps::pageMessageStep());
+    executor_.registerStep(steps::pageGoStep());
 }
 
 void WfEngine::loadConfig(const std::string& json_path) {
@@ -142,6 +153,35 @@ bool WfEngine::hasEvent(const std::string& event_name) const {
     // them, still cost nothing.
     const auto tenant = splitEvent(event_name).first;
     return !tenant.empty() && tenants_with_workflows_.count(tenant) > 0;
+}
+
+nlohmann::json WfEngine::runNamedNow(const std::string& tenant,
+                                     const std::string& named,
+                                     const std::string& trigger_event,
+                                     const nlohmann::json& entity_data) const {
+    try {
+        dbal::Client client(client_config_);
+        auto loaded = loadTenantWorkflowNamed(client, tenant, named, trigger_event);
+        if (!loaded) {
+            spdlog::info("[workflow] {} asked for '{}': nothing published "
+                         "under that name with trigger '{}'",
+                         tenant, named, trigger_event);
+            return nlohmann::json::array();
+        }
+        WfContext ctx;
+        ctx.set("event", entity_data);
+        executor_.executeNodes(loaded->nodes, loaded->name, ctx, client);
+        auto effects = ctx.get(kEffectsVar);
+        return effects.is_array() ? effects : nlohmann::json::array();
+    } catch (const std::exception& e) {
+        // The row is already written; a workflow that failed must not turn
+        // a successful submission into an error the visitor sees.
+        spdlog::error("[workflow] {} '{}' failed: {}", tenant, named, e.what());
+        return nlohmann::json::array();
+    } catch (...) {
+        spdlog::error("[workflow] {} '{}' failed", tenant, named);
+        return nlohmann::json::array();
+    }
 }
 
 void WfEngine::dispatchAsync(const std::string& event_name,

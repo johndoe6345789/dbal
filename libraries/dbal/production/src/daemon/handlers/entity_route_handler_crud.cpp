@@ -88,9 +88,35 @@ void EntityRouteHandler::handleEntity(
             if (wf_engine_->hasEvent(event_name)) {
                 auto orig_success = callbacks.send_success;
                 auto* engine = wf_engine_;
-                callbacks.send_success = [orig_success, engine, event_name](const ::Json::Value& result) {
-                    orig_success(result);
-                    engine->dispatchAsync(event_name, jsoncpp_to_nlohmann(result));
+                const std::string tenant_copy = tenant;
+                callbacks.send_success = [orig_success, engine, event_name,
+                                          tenant_copy](const ::Json::Value& result) {
+                    const auto row = jsoncpp_to_nlohmann(result);
+                    // A record that *names* its workflow has somebody
+                    // waiting on the other end, and the page.* steps exist
+                    // precisely so their result comes back. So that one runs
+                    // now and its effects ride along in the response, while
+                    // a plain subscription stays fire-and-forget after it.
+                    std::string named;
+                    if (row.contains("workflow") && row["workflow"].is_string())
+                        named = row["workflow"].get<std::string>();
+
+                    if (named.empty()) {
+                        orig_success(result);
+                        engine->dispatchAsync(event_name, row);
+                        return;
+                    }
+
+                    const std::string trigger =
+                        event_name.substr(tenant_copy.size() + 1);
+                    const auto effects =
+                        engine->runNamedNow(tenant_copy, named, trigger, row);
+                    ::Json::Value enriched = result;
+                    ::Json::Reader reader;
+                    ::Json::Value parsed;
+                    if (reader.parse(effects.dump(), parsed))
+                        enriched["effects"] = parsed;
+                    orig_success(enriched);
                 };
             }
         }
