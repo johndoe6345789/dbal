@@ -504,3 +504,49 @@ TEST(BqlParser, AFormNameHasToBeQuoted) {
 TEST(BqlParser, RefusesAFormNameWithNothingAfterIt) {
     EXPECT_FALSE(parseSentence(R"(run it when someone submits the "x")").ok);
 }
+
+/**
+ * A step's parameters are not all scalars: dbal.entity.create takes a
+ * nested `data` object naming the columns, and every step that hands a
+ * value to the next one names it under `outputs`. Neither could be said
+ * in a language where a value is always text, so a dot reaches inside.
+ */
+TEST(BqlParser, ReadsADottedParameterName) {
+    const auto r = parseSentence(
+        R"(then Save a row with entity of "Booking", data.name of "${event.data.name}")");
+
+    ASSERT_TRUE(r.ok) << r.error;
+    ASSERT_EQ(r.sentence.attrs.size(), 2u);
+    EXPECT_EQ(r.sentence.attrs[1].key, "data.name");
+    EXPECT_EQ(r.sentence.attrs[1].value, "${event.data.name}");
+}
+
+TEST(BqlParser, ReadsADottedOutputName) {
+    const auto r = parseSentence(R"(then Make an id with outputs.id of "new_id")");
+
+    ASSERT_TRUE(r.ok) << r.error;
+    ASSERT_EQ(r.sentence.attrs.size(), 1u);
+    EXPECT_EQ(r.sentence.attrs[0].key, "outputs.id");
+}
+
+/**
+ * The dot that joins a word is the same character that ends a sentence.
+ * It joins only when a word character follows, so a full stop with
+ * nothing wordlike after it still terminates.
+ */
+TEST(BqlParser, AFullStopStillEndsASentence) {
+    for (const char* line : {"start a new page.",
+                             R"(add a Heading 1 that says "Hi".)",
+                             "publish this at /about.",
+                             R"(then Save a row with entity of "B", data.x of "y".)"}) {
+        EXPECT_TRUE(parseSentence(line).ok) << line;
+    }
+}
+
+// A decimal is still a decimal -- that is why the rule existed at all.
+TEST(BqlParser, StillReadsADecimalAsOneWord) {
+    const auto r = parseSentence(R"(give hero padding of "1.5")");
+
+    ASSERT_TRUE(r.ok) << r.error;
+    EXPECT_EQ(r.sentence.attrs[0].value, "1.5");
+}
