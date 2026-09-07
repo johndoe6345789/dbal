@@ -1,4 +1,5 @@
 #include "sqlite_result_parser.hpp"
+#include "adapters/json_column.hpp"
 #include "sqlite_query_builder.hpp"
 #include <spdlog/spdlog.h>
 
@@ -72,17 +73,7 @@ Json SQLiteResultParser::columnToJson(const core::EntityField& field,
         const unsigned char* text = sqlite3_column_text(stmt, columnIndex);
         if (!text) return nullptr;
         const std::string value(reinterpret_cast<const char*>(text));
-        if (field.type == "json") {
-            // Written with .dump() and never parsed back, so a json column
-            // came out as text. A workflow reading ${event.data.name} off a
-            // form submission got nothing: `data` was a string, so the
-            // dot-path had no object to walk into.
-            try {
-                return Json::parse(value);
-            } catch (const Json::parse_error&) {
-                return value;
-            }
-        }
+        if (field.type == "json") return dbal::adapters::decodeJsonColumn(value);
         return value;
     }
 }

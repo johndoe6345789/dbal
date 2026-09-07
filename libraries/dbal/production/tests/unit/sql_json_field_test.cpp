@@ -14,12 +14,12 @@
 
 #include <gtest/gtest.h>
 
-#include "adapters/sql/sql_adapter_base.hpp"
+#include "adapters/json_column.hpp"
 
-using dbal::adapters::sql::SqlAdapter;
+using dbal::adapters::decodeJsonColumn;
 
 TEST(SqlJsonField, RebuildsTheObjectThatWasStored) {
-    const nlohmann::json value = SqlAdapter::decodeJsonColumn(
+    const nlohmann::json value = decodeJsonColumn(
         R"({"name":"Rosa","job":"Buckled rear wheel"})");
 
     ASSERT_TRUE(value.is_object());
@@ -30,7 +30,7 @@ TEST(SqlJsonField, RebuildsTheObjectThatWasStored) {
 // ${event.data.name} is a dot-path, so `data` must be walkable.
 TEST(SqlJsonField, LetsADotPathReachAField) {
     const nlohmann::json value =
-        SqlAdapter::decodeJsonColumn(R"({"name":"Rosa"})");
+        decodeJsonColumn(R"({"name":"Rosa"})");
 
     ASSERT_TRUE(value.is_object());
     ASSERT_TRUE(value.contains("name"));
@@ -39,14 +39,14 @@ TEST(SqlJsonField, LetsADotPathReachAField) {
 
 TEST(SqlJsonField, RebuildsANestedObject) {
     const nlohmann::json value =
-        SqlAdapter::decodeJsonColumn(R"({"a":{"b":"c"}})");
+        decodeJsonColumn(R"({"a":{"b":"c"}})");
 
     ASSERT_TRUE(value.is_object());
     EXPECT_EQ(value["a"]["b"], "c");
 }
 
 TEST(SqlJsonField, RebuildsAnArrayToo) {
-    const nlohmann::json value = SqlAdapter::decodeJsonColumn(R"(["a","b"])");
+    const nlohmann::json value = decodeJsonColumn(R"(["a","b"])");
 
     ASSERT_TRUE(value.is_array());
     EXPECT_EQ(value.size(), 2u);
@@ -58,7 +58,7 @@ TEST(SqlJsonField, RebuildsAnArrayToo) {
  * and it is at least visible to whoever has to fix it.
  */
 TEST(SqlJsonField, FallsBackToTheTextWhenItWillNotParse) {
-    const nlohmann::json value = SqlAdapter::decodeJsonColumn("not json");
+    const nlohmann::json value = decodeJsonColumn("not json");
 
     ASSERT_TRUE(value.is_string());
     EXPECT_EQ(value.get<std::string>(), "not json");
@@ -66,7 +66,7 @@ TEST(SqlJsonField, FallsBackToTheTextWhenItWillNotParse) {
 
 // A bare word is not JSON; a bare number is. Neither may throw.
 TEST(SqlJsonField, SurvivesOddButHarmlessText) {
-    EXPECT_TRUE(SqlAdapter::decodeJsonColumn("42").is_number());
-    EXPECT_TRUE(SqlAdapter::decodeJsonColumn("true").is_boolean());
-    EXPECT_TRUE(SqlAdapter::decodeJsonColumn("{oops").is_string());
+    EXPECT_TRUE(decodeJsonColumn("42").is_number());
+    EXPECT_TRUE(decodeJsonColumn("true").is_boolean());
+    EXPECT_TRUE(decodeJsonColumn("{oops").is_string());
 }
