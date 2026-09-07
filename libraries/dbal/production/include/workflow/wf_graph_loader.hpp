@@ -68,6 +68,12 @@ std::optional<LoadedWorkflow> loadTenantWorkflow(dbal::Client& client,
  * what someone types and can collide, an id cannot. Drafts are skipped.
  * Returns nullopt when nothing matches, which is logged -- a button
  * pointing at a workflow that will not run must not fail silently.
+ *
+ * @p form is which form the submission came from. It is *not* used to
+ * choose: naming a workflow settles the question, and a workflow's own
+ * formName only settles it for submissions that named none. It is here
+ * so a mismatch can be logged, because a page naming a workflow meant
+ * for another form is usually a mistake worth seeing.
  */
 std::optional<LoadedWorkflow> loadTenantWorkflowNamed(dbal::Client& client,
                                                       const std::string& tenant,

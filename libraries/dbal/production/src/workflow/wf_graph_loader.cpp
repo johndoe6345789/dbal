@@ -177,17 +177,27 @@ std::optional<LoadedWorkflow> loadTenantWorkflowNamed(dbal::Client& client,
         if (!found.isOk()) continue;
         auto chosen = firstPublished(found.value().items);
         if (chosen.is_null()) continue;
-        // A workflow that named a form meant it. A button pointing at it
-        // from some other form is a mistake in the page, and running it
-        // anyway would make the scope advisory rather than real.
+        // formName is deliberately not consulted here. The two answer
+        // different questions: formName settles which workflow a
+        // submission that named none should reach, and a name settles it
+        // outright. Letting the first overrule the second would mean a
+        // page saying exactly which workflow to run and being ignored,
+        // which is not a scope doing its job -- it is a scope doing
+        // somebody else's.
+        //
+        // What still guards this path is the workflow's own trigger,
+        // filtered on in the query above: a workflow has to have agreed
+        // to run from a form submission before any page can name it.
         const std::string wants =
             chosen.contains("formName") && chosen["formName"].is_string()
                 ? chosen["formName"].get<std::string>()
                 : std::string();
         if (!wants.empty() && !form.empty() && wants != form) {
-            spdlog::warn("[workflow] {} asked for '{}', which is for the "
-                         "'{}' form, not '{}'", tenant, named, wants, form);
-            return std::nullopt;
+            // Run it -- the page asked for it by name -- but say so: this
+            // is nearly always somebody having pointed a button at the
+            // wrong workflow.
+            spdlog::info("[workflow] {} ran '{}' from the '{}' form, though "
+                         "it is scoped to '{}'", tenant, named, form, wants);
         }
         return buildWorkflow(client, tenant, chosen);
     }
