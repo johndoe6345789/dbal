@@ -219,6 +219,10 @@
       "admin": [
         "*"
       ]
+    },
+    "read": {
+      "admin": true,
+      "self": true
     }
   },
   "rateLimits": {

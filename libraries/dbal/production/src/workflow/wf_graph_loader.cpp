@@ -149,14 +149,20 @@ std::optional<LoadedWorkflow> loadTenantWorkflow(dbal::Client& client,
 
 std::optional<LoadedWorkflow> loadTenantWorkflowNamed(dbal::Client& client,
                                                       const std::string& tenant,
-                                                      const std::string& named) {
+                                                      const std::string& named,
+                                                      const std::string& trigger_event) {
     // A button says which workflow it runs, so the row is found by that
-    // name rather than by what it is subscribed to. Tried as an id first:
-    // a name is what someone types and can collide, an id cannot.
+    // name rather than by what is subscribed. Tried as an id first: a name
+    // is what someone types and can collide, an id cannot.
     for (const char* column : {"id", "name"}) {
         ListOptions opts;
-        opts.filter["tenantId"] = tenant;
-        opts.filter[column]     = named;
+        opts.filter["tenantId"]     = tenant;
+        opts.filter[column]         = named;
+        // The workflow's own trigger is the opt-in, and it is filtered on
+        // rather than checked afterwards: the name arrives in a request
+        // body that anyone may send, so a workflow that never agreed to
+        // run from a submission must not even be fetched by one.
+        opts.filter["triggerEvent"] = trigger_event;
         opts.limit = 10;
         auto found = client.listEntities("Workflow", opts);
         if (!found.isOk()) continue;
@@ -165,7 +171,8 @@ std::optional<LoadedWorkflow> loadTenantWorkflowNamed(dbal::Client& client,
         return buildWorkflow(client, tenant, chosen);
     }
     spdlog::warn("[workflow] {} asked for workflow '{}', which is not "
-                 "published under that tenant", tenant, named);
+                 "published under that tenant with trigger '{}'",
+                 tenant, named, trigger_event);
     return std::nullopt;
 }
 

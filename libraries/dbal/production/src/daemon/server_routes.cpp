@@ -115,10 +115,43 @@ namespace {
      * A public create still may not set a privileged field, or open signup
      * would be a way to mint a god.
      */
+    /**
+     * Refuse a caller addressing a tenant that is not theirs.
+     *
+     * AuthContext.tenant_id is taken from the URL path, and the existing
+     * cross-check sits inside the `require_auth` branch -- which
+     * auth.json leaves off for every tenant but pastebin and codegen. So
+     * on this deployment nothing compared the two at all: a signed-in
+     * founder could read another community's rows by typing their tenant
+     * into the path, and workflows, drafts and submissions all live there.
+     *
+     * `system` is exempt on purpose. It is the shared instance bucket --
+     * seeded pages, installed packages, the instance's own accounts --
+     * that every tenant's panel legitimately reads; its own ACLs still
+     * decide what is visible there.
+     *
+     * A token with no tenant_id (HS256, legacy Flask) keeps today's
+     * URL-only trust rather than being refused, exactly as the older
+     * cross-check below does. Don't tighten that into a hard-require.
+     */
+    drogon::HttpResponsePtr tenant_mismatch_rejection(
+        const std::optional<dbal::security::JwtClaims>& claims,
+        const std::string& tenant) {
+        if (!claims || claims->tenant_id.empty()) return nullptr;
+        if (claims->tenant_id == tenant || tenant == "system") return nullptr;
+        ::Json::Value body;
+        body["success"] = false;
+        body["error"] = "Token tenant does not match request tenant";
+        auto r = drogon::HttpResponse::newHttpJsonResponse(body);
+        r->setStatusCode(drogon::k403Forbidden);
+        return r;
+    }
+
     template <typename OidcServiceOpt>
     drogon::HttpResponsePtr write_authz_rejection(
         const drogon::HttpRequestPtr& req,
         const dbal::core::SchemaAclRegistry* registry,
+        const std::string& tenant,
         const std::string& entity,
         const std::string& jwt_secret,
         const OidcServiceOpt& oidc_service) {
@@ -166,6 +199,7 @@ namespace {
             r->setStatusCode(drogon::k401Unauthorized);
             return r;
         }
+        if (auto wrong = tenant_mismatch_rejection(claims, tenant)) return wrong;
         if (!registry->roleAllowed(entity, op, claims->role)) {
             body["error"] = "Your role may not modify this entity";
             auto r = drogon::HttpResponse::newHttpJsonResponse(body);
@@ -194,6 +228,7 @@ namespace {
     drogon::HttpResponsePtr read_authz_rejection(
         const drogon::HttpRequestPtr& req,
         const dbal::core::SchemaAclRegistry* registry,
+        const std::string& tenant,
         const std::string& entity,
         const std::string& jwt_secret,
         const OidcServiceOpt& oidc_service) {
@@ -220,6 +255,7 @@ namespace {
             r->setStatusCode(drogon::k401Unauthorized);
             return r;
         }
+        if (auto wrong = tenant_mismatch_rejection(claims, tenant)) return wrong;
         if (!registry->roleAllowed(entity, "read", claims->role)) {
             body["error"] = "Your role may not read this entity";
             auto r = drogon::HttpResponse::newHttpJsonResponse(body);
@@ -1246,12 +1282,12 @@ void Server::registerRoutes() {
             }
             if (auto reject = write_authz_rejection(
                     req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
-                    entity, jwt_secret_, oidc_service_)) {
+                    tenant, entity, jwt_secret_, oidc_service_)) {
                 cb(reject); return;
             }
             if (auto reject = read_authz_rejection(
                     req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
-                    entity, jwt_secret_, oidc_service_)) {
+                    tenant, entity, jwt_secret_, oidc_service_)) {
                 cb(reject); return;
             }
             // JWT auth + ownership context
@@ -1356,12 +1392,12 @@ void Server::registerRoutes() {
             }
             if (auto reject = write_authz_rejection(
                     req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
-                    entity, jwt_secret_, oidc_service_)) {
+                    tenant, entity, jwt_secret_, oidc_service_)) {
                 cb(reject); return;
             }
             if (auto reject = read_authz_rejection(
                     req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
-                    entity, jwt_secret_, oidc_service_)) {
+                    tenant, entity, jwt_secret_, oidc_service_)) {
                 cb(reject); return;
             }
             std::optional<handlers::AuthContext> auth_ctx;
@@ -1467,12 +1503,12 @@ void Server::registerRoutes() {
             }
             if (auto reject = write_authz_rejection(
                     req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
-                    entity, jwt_secret_, oidc_service_)) {
+                    tenant, entity, jwt_secret_, oidc_service_)) {
                 cb(reject); return;
             }
             if (auto reject = read_authz_rejection(
                     req, schema_acl_registry_ ? &*schema_acl_registry_ : nullptr,
-                    entity, jwt_secret_, oidc_service_)) {
+                    tenant, entity, jwt_secret_, oidc_service_)) {
                 cb(reject); return;
             }
             // Actions inherit the entity's require_auth but not ownership semantics

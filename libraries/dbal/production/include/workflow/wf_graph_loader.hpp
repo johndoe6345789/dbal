@@ -41,21 +41,28 @@ std::optional<LoadedWorkflow> loadTenantWorkflow(dbal::Client& client,
                                                  const std::string& trigger_event);
 
 /**
- * The workflow @p named, whatever it is subscribed to.
+ * The workflow @p named, if it has opted in to @p trigger_event.
  *
- * A button can say which workflow it runs rather than leaving it to what
- * the workflow listens for. That is the difference between a page that
- * names its behaviour and one where the connection lives somewhere else
- * entirely -- so a workflow found this way ignores triggerEvent.
+ * A button says which workflow it runs, rather than leaving the connection
+ * to live in some workflow's own settings. But the name arrives in a
+ * request body, and FormSubmission may be created by anyone with no
+ * account -- so on its own that would let a stranger run any workflow a
+ * tenant had ever published, and workflows create and read rows.
+ *
+ * The workflow's own trigger is the opt-in. A tenant marks a workflow
+ * "runs when someone submits a form" and it becomes reachable from a
+ * page; naming only chooses among the ones already willing. A workflow
+ * with any other trigger, or none, cannot be summoned by a submission
+ * however it is named.
  *
  * @p named is matched against the id first and then the name: a name is
  * what someone types and can collide, an id cannot. Drafts are skipped.
- * Returns nullopt when the tenant has published nothing by that name,
- * which is logged -- a button pointing at a workflow that is not there
- * must not fail silently.
+ * Returns nullopt when nothing matches, which is logged -- a button
+ * pointing at a workflow that will not run must not fail silently.
  */
 std::optional<LoadedWorkflow> loadTenantWorkflowNamed(dbal::Client& client,
                                                       const std::string& tenant,
-                                                      const std::string& named);
+                                                      const std::string& named,
+                                                      const std::string& trigger_event);
 
 } // namespace dbal::workflow

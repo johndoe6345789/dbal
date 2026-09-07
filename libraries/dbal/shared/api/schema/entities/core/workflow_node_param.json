@@ -95,7 +95,8 @@
       ]
     },
     "read": {
-      "public": true
+      "admin": true,
+      "self": true
     },
     "update": {
       "role": [

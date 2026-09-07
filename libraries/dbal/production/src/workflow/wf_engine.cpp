@@ -176,7 +176,7 @@ void WfEngine::dispatchAsync(const std::string& event_name,
 
                 auto loaded = named.empty()
                     ? loadTenantWorkflow(client, tenant, trigger)
-                    : loadTenantWorkflowNamed(client, tenant, named);
+                    : loadTenantWorkflowNamed(client, tenant, named, trigger);
                 if (!loaded) {
                     spdlog::info("[workflow] {} ran nothing{}", event_name,
                                  named.empty()
